@@ -49,5 +49,7 @@
         "chrono": "cpp",
         "ratio": "cpp",
         "thread": "cpp"
-    }
+    },
+    "cpplint.verbose": 0,
+    "C_Cpp.dimInactiveRegions": true
 }

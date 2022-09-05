@@ -1,0 +1,161 @@
+--------------------------- MODULE TimeSync -----------------------------
+EXTENDS TLC
+
+(*--algorithm lamp
+variable NETstate = "UNINITED", AMstate = "UNINITED", BMstate = "UNINITED", SENstate = "UNINITED",
+  NETtick = 0, AMtick = 0, BMtick = 0, SENtick = 0;
+
+macro NETtransition(from, to) begin
+  either 
+      await to = "START";
+      NETstate := to
+  or
+      await to = "STOP";
+      NETstate := to
+  or
+      await to = "INVAILD";
+      NETstate := to
+  or
+      await to = "UNINITED";
+      NETstate := to
+  end either;
+end macro;
+
+macro AMtransition(from, to) begin
+  either 
+      await to = "START";
+      with NETstate = "START" do
+          AMtick := NETtick;
+          AMstate := to;
+      end with;
+  or
+      await to = "STOP";
+      AMstate := to
+  or
+      await to = "INVAILD";
+      AMstate := to
+  or
+      await to = "UNINITED";
+      AMstate := to
+  end either;
+end macro;
+
+macro BMtransition(from ,to) begin
+  either 
+      await to = "START";
+      with AMstate = "START" do
+          BMtick := AMtick;
+          BMstate := to;
+      end with;
+  or
+      await to = "STOP";
+      BMstate := to;
+  or
+      await to = "INVAILD";
+      BMstate := to;
+  or
+      await to = "UNINITED";
+      BMstate := to;
+  end either;
+end macro;
+
+macro SENtransition(from , to) begin
+  either 
+      await to = "START";
+      with AMstate = "START" do
+          SENtick := AMtick;
+          SENstate := to;
+      end with;
+  or
+      await to = "STOP";
+      BMstate := to;
+  or
+      await to = "INVAILD";
+      BMstate := to;
+  or
+      await to = "UNINITED";
+      BMstate := to;
+  end either;
+end macro;
+
+process NETStateMachine = "NET"
+begin
+  Action:
+    either 
+        await NETstate = "START";
+        NETtick := NETtick + 1;
+    or
+        await NETstate = "STOP";
+    or
+        await NETstate = "INVAILD";
+    or
+        await NETstate = "UNINITED";
+    end either;
+    goto Action;
+end process;
+
+process AMStateMachine = "AM"
+begin
+  Action:
+    either 
+        await AMstate = "START";
+        AMtick := AMtick + 2;
+      or
+        await AMstate = "STOP";
+    or
+        await AMstate = "INVAILD";
+    or
+        await AMstate = "UNINITED";
+    end either;
+    goto Action;
+end process;
+
+process BMStateMachine = "BM"
+begin
+  Action:
+    either 
+        await BMstate = "START";
+        BMtick := BMtick + 3;
+        await AMstate = "START";
+        BMtick := AMtick
+      or
+        await BMstate = "STOP";
+    or
+        await BMstate = "INVAILD";
+    or
+        await BMstate = "UNINITED";
+    end either;
+    goto Action;
+end process;
+
+process SENStateMachine = "SEN"
+begin
+  Action:
+    either 
+        await SENstate = "START";
+        SENtick := SENtick + 4;
+        await AMstate = "START";
+        SENtick := AMtick
+        await BMstate = "START";
+        SENtick := BMtick
+      or
+        await SENstate = "STOP";
+    or
+        await SENstate = "INVAILD";
+    or
+        await SENstate = "UNINITED";
+    end either;
+    goto Action;
+end process;
+
+
+end algorithm; *)
+
+
+\* BEGIN TRANSLATION (chksum(pcal) = "b6249d7b" /\ chksum(tla) = "365abe17")
+
+\* END TRANSLATION 
+
+
+==================================================================
+

@@ -34,3 +34,7 @@
 # Folders
 build/*
 */build/*
+
+*.old
+*.out
+states
