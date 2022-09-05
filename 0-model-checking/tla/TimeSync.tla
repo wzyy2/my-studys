@@ -1,10 +1,9 @@
 --------------------------- MODULE TimeSync -----------------------------
-EXTENDS Naturals, TLC
+EXTENDS Integers, TLC
 
 (*--algorithm lamp
 variable NETstate = "UNINITED", AMstate = "UNINITED", BMstate = "UNINITED", SENstate = "UNINITED",
-  NETtick = 0, AMtick = 0, BMtick = 0, SENtick = 0,
-  ACTIVEmachine = 0;
+  NETtick = 0, AMtick = 0, BMtick = 0, SENtick = 0, StateSet = {"START", "STOP", "UNINITED"};
 
 macro NETtransition(from, to) begin
   either 
@@ -14,71 +13,12 @@ macro NETtransition(from, to) begin
       await to = "STOP";
       NETstate := to
   or
-      await to = "INVAILD";
+      await to = "EXIT";
       NETstate := to
   or
       await to = "UNINITED";
       NETstate := to
-  end either;
-end macro;
-
-macro AMtransition(from, to) begin
-  either 
-      await to = "START";
-      with NETstate = "START" do
-          AMtick := NETtick;
-          AMstate := to;
-      end with;
-
-      if ACTIVEmachine = 0 then ACTIVEmachine := 1; end if;
-  or
-      await to = "STOP";
-      AMstate := to
-  or
-      await to = "INVAILD";
-      AMstate := to
-  or
-      await to = "UNINITED";
-      AMstate := to
-  end either;
-end macro;
-
-macro BMtransition(from ,to) begin
-  either 
-      await to = "START";
-      with AMstate = "START" do
-          BMtick := AMtick;
-          BMstate := to;
-      end with;
-  or
-      await to = "STOP";
-      BMstate := to;
-  or
-      await to = "INVAILD";
-      BMstate := to;
-  or
-      await to = "UNINITED";
-      BMstate := to;
-  end either;
-end macro;
-
-macro SENtransition(from , to) begin
-  either 
-      await to = "START";
-      with AMstate = "START" do
-          SENtick := AMtick;
-          SENstate := to;
-      end with;
-  or
-      await to = "STOP";
-      BMstate := to;
-  or
-      await to = "INVAILD";
-      BMstate := to;
-  or
-      await to = "UNINITED";
-      BMstate := to;
-  end either;
+  end either
 end macro;
 
 process NETStateMachine = "NET"
@@ -90,76 +30,40 @@ begin
     or
         await NETstate = "STOP";
     or
-        await NETstate = "INVAILD";
+        await NETstate = "EXIT";
     or
         await NETstate = "UNINITED";
     end either;
-    goto Action;
+    if NETstate /= "EXIT" then
+        goto Action;
+    else
+        goto EXIT;
+    end if;
+  EXIT: skip
 end process;
 
-process AMStateMachine = "AM"
-begin
-  Action:
-    either 
-        await AMstate = "START";
-        AMtick := AMtick + 2;
-      or
-        await AMstate = "STOP";
-    or
-        await AMstate = "INVAILD";
-    or
-        await AMstate = "UNINITED";
-    end either;
-    goto Action;
-end process;
 
-process BMStateMachine = "BM"
+process CheckRules = "CheckRules"
 begin
-  Action:
-    either 
-        await BMstate = "START";
-        BMtick := BMtick + 3;
-      or
-        await BMstate = "STOP";
-    or
-        await BMstate = "INVAILD";
-    or
-        await BMstate = "UNINITED";
-    end either;
-    goto Action;
-end process;
-
-process SENStateMachine = "SEN"
-begin
-  Action:
-    either 
-        await SENstate = "START";
-        SENtick := SENtick + 4;
-      or
-        await SENstate = "STOP";
-    or
-        await SENstate = "INVAILD";
-    or
-        await SENstate = "UNINITED";
-    end either;
-    goto Action;
+  START:
+    NETtransition("UNINITED", "START");
+  EXIT:
+    NETtransition("START", "EXIT");
 end process;
 
 
 end algorithm; *)
 
 
-\* BEGIN TRANSLATION (chksum(pcal) = "340a404b" /\ chksum(tla) = "12ed7c28")
-\* Label Action of process NETStateMachine at line 87 col 5 changed to Action_
-\* Label Action of process AMStateMachine at line 103 col 5 changed to Action_A
-\* Label Action of process BMStateMachine at line 119 col 5 changed to Action_B
+\* BEGIN TRANSLATION (chksum(pcal) = "168b3970" /\ chksum(tla) = "110356d3")
+\* Label EXIT of process NETStateMachine at line 43 col 9 changed to EXIT_
 VARIABLES NETstate, AMstate, BMstate, SENstate, NETtick, AMtick, BMtick, 
-          SENtick, ACTIVEmachine, pc
+          SENtick, StateSet, pc
 
 vars == << NETstate, AMstate, BMstate, SENstate, NETtick, AMtick, BMtick, 
-           SENtick, ACTIVEmachine, pc >>
+           SENtick, StateSet, pc >>
 
-ProcSet == {"NET"} \cup {"AM"} \cup {"BM"} \cup {"SEN"}
+ProcSet == {"NET"} \cup {"CheckRules"}
 
 Init == (* Global variables *)
         /\ NETstate = "UNINITED"
@@ -170,78 +74,67 @@ Init == (* Global variables *)
         /\ AMtick = 0
         /\ BMtick = 0
         /\ SENtick = 0
-        /\ ACTIVEmachine = 0
-        /\ pc = [self \in ProcSet |-> CASE self = "NET" -> "Action_"
-                                        [] self = "AM" -> "Action_A"
-                                        [] self = "BM" -> "Action_B"
-                                        [] self = "SEN" -> "Action"]
+        /\ StateSet = {"START", "STOP", "UNINITED"}
+        /\ pc = [self \in ProcSet |-> CASE self = "NET" -> "Action"
+                                        [] self = "CheckRules" -> "START"]
 
-Action_ == /\ pc["NET"] = "Action_"
-           /\ \/ /\ NETstate = "START"
-                 /\ NETtick' = NETtick + 1
-              \/ /\ NETstate = "STOP"
-                 /\ UNCHANGED NETtick
-              \/ /\ NETstate = "INVAILD"
-                 /\ UNCHANGED NETtick
-              \/ /\ NETstate = "UNINITED"
-                 /\ UNCHANGED NETtick
-           /\ pc' = [pc EXCEPT !["NET"] = "Action_"]
-           /\ UNCHANGED << NETstate, AMstate, BMstate, SENstate, AMtick, 
-                           BMtick, SENtick, ACTIVEmachine >>
+Action == /\ pc["NET"] = "Action"
+          /\ \/ /\ NETstate = "START"
+                /\ NETtick' = NETtick + 1
+                /\ PrintT(NETstate)
+             \/ /\ NETstate = "STOP"
+                /\ UNCHANGED NETtick
+             \/ /\ NETstate = "EXIT"
+                /\ UNCHANGED NETtick
+             \/ /\ NETstate = "UNINITED"
+                /\ UNCHANGED NETtick
+          /\ IF NETstate /= "EXIT"
+                THEN /\ pc' = [pc EXCEPT !["NET"] = "Action"]
+                ELSE /\ pc' = [pc EXCEPT !["NET"] = "EXIT_"]
+          /\ UNCHANGED << NETstate, AMstate, BMstate, SENstate, AMtick, BMtick, 
+                          SENtick, StateSet >>
 
-NETStateMachine == Action_
+EXIT_ == /\ pc["NET"] = "EXIT_"
+         /\ TRUE
+         /\ pc' = [pc EXCEPT !["NET"] = "Done"]
+         /\ UNCHANGED << NETstate, AMstate, BMstate, SENstate, NETtick, AMtick, 
+                         BMtick, SENtick, StateSet >>
 
-Action_A == /\ pc["AM"] = "Action_A"
-            /\ \/ /\ AMstate = "START"
-                  /\ AMtick' = AMtick + 2
-               \/ /\ AMstate = "STOP"
-                  /\ UNCHANGED AMtick
-               \/ /\ AMstate = "INVAILD"
-                  /\ UNCHANGED AMtick
-               \/ /\ AMstate = "UNINITED"
-                  /\ UNCHANGED AMtick
-            /\ pc' = [pc EXCEPT !["AM"] = "Action_A"]
-            /\ UNCHANGED << NETstate, AMstate, BMstate, SENstate, NETtick, 
-                            BMtick, SENtick, ACTIVEmachine >>
+NETStateMachine == Action \/ EXIT_
 
-AMStateMachine == Action_A
+START == /\ pc["CheckRules"] = "START"
+         /\ \/ /\ "START" = "START"
+               /\ NETstate' = "START"
+            \/ /\ "START" = "STOP"
+               /\ NETstate' = "START"
+            \/ /\ "START" = "EXIT"
+               /\ NETstate' = "START"
+            \/ /\ "START" = "UNINITED"
+               /\ NETstate' = "START"
+         /\ pc' = [pc EXCEPT !["CheckRules"] = "EXIT"]
+         /\ UNCHANGED << AMstate, BMstate, SENstate, NETtick, AMtick, BMtick, 
+                         SENtick, StateSet >>
 
-Action_B == /\ pc["BM"] = "Action_B"
-            /\ \/ /\ BMstate = "START"
-                  /\ BMtick' = BMtick + 3
-               \/ /\ BMstate = "STOP"
-                  /\ UNCHANGED BMtick
-               \/ /\ BMstate = "INVAILD"
-                  /\ UNCHANGED BMtick
-               \/ /\ BMstate = "UNINITED"
-                  /\ UNCHANGED BMtick
-            /\ pc' = [pc EXCEPT !["BM"] = "Action_B"]
-            /\ UNCHANGED << NETstate, AMstate, BMstate, SENstate, NETtick, 
-                            AMtick, SENtick, ACTIVEmachine >>
+EXIT == /\ pc["CheckRules"] = "EXIT"
+        /\ \/ /\ "EXIT" = "START"
+              /\ NETstate' = "EXIT"
+           \/ /\ "EXIT" = "STOP"
+              /\ NETstate' = "EXIT"
+           \/ /\ "EXIT" = "EXIT"
+              /\ NETstate' = "EXIT"
+           \/ /\ "EXIT" = "UNINITED"
+              /\ NETstate' = "EXIT"
+        /\ pc' = [pc EXCEPT !["CheckRules"] = "Done"]
+        /\ UNCHANGED << AMstate, BMstate, SENstate, NETtick, AMtick, BMtick, 
+                        SENtick, StateSet >>
 
-BMStateMachine == Action_B
-
-Action == /\ pc["SEN"] = "Action"
-          /\ \/ /\ SENstate = "START"
-                /\ SENtick' = SENtick + 4
-             \/ /\ SENstate = "STOP"
-                /\ UNCHANGED SENtick
-             \/ /\ SENstate = "INVAILD"
-                /\ UNCHANGED SENtick
-             \/ /\ SENstate = "UNINITED"
-                /\ UNCHANGED SENtick
-          /\ pc' = [pc EXCEPT !["SEN"] = "Action"]
-          /\ UNCHANGED << NETstate, AMstate, BMstate, SENstate, NETtick, 
-                          AMtick, BMtick, ACTIVEmachine >>
-
-SENStateMachine == Action
+CheckRules == START \/ EXIT
 
 (* Allow infinite stuttering to prevent deadlock on termination. *)
 Terminating == /\ \A self \in ProcSet: pc[self] = "Done"
                /\ UNCHANGED vars
 
-Next == NETStateMachine \/ AMStateMachine \/ BMStateMachine
-           \/ SENStateMachine
+Next == NETStateMachine \/ CheckRules
            \/ Terminating
 
 Spec == Init /\ [][Next]_vars

@@ -1,9 +1,9 @@
 --------------------------- MODULE TimeSync -----------------------------
-EXTENDS TLC
+EXTENDS Integers, TLC
 
 (*--algorithm lamp
 variable NETstate = "UNINITED", AMstate = "UNINITED", BMstate = "UNINITED", SENstate = "UNINITED",
-  NETtick = 0, AMtick = 0, BMtick = 0, SENtick = 0;
+  NETtick = 0, AMtick = 0, BMtick = 0, SENtick = 0, StateSet = {"START", "STOP", "UNINITED"};
 
 macro NETtransition(from, to) begin
   either 
@@ -13,7 +13,7 @@ macro NETtransition(from, to) begin
       await to = "STOP";
       NETstate := to
   or
-      await to = "INVAILD";
+      await to = "EXIT";
       NETstate := to
   or
       await to = "UNINITED";
@@ -24,15 +24,15 @@ end macro;
 macro AMtransition(from, to) begin
   either 
       await to = "START";
-      with NETstate = "START" do
+      if NETstate = "START" then
           AMtick := NETtick;
           AMstate := to;
-      end with;
+      end if;
   or
       await to = "STOP";
       AMstate := to
   or
-      await to = "INVAILD";
+      await to = "EXIT";
       AMstate := to
   or
       await to = "UNINITED";
@@ -43,15 +43,15 @@ end macro;
 macro BMtransition(from ,to) begin
   either 
       await to = "START";
-      with AMstate = "START" do
+      if AMstate = "START" then
           BMtick := AMtick;
           BMstate := to;
-      end with;
+      end if;
   or
       await to = "STOP";
       BMstate := to;
   or
-      await to = "INVAILD";
+      await to = "EXIT";
       BMstate := to;
   or
       await to = "UNINITED";
@@ -62,15 +62,15 @@ end macro;
 macro SENtransition(from , to) begin
   either 
       await to = "START";
-      with AMstate = "START" do
+      if AMstate = "START" then
           SENtick := AMtick;
           SENstate := to;
-      end with;
+      end if;
   or
       await to = "STOP";
       BMstate := to;
   or
-      await to = "INVAILD";
+      await to = "EXIT";
       BMstate := to;
   or
       await to = "UNINITED";
@@ -87,11 +87,16 @@ begin
     or
         await NETstate = "STOP";
     or
-        await NETstate = "INVAILD";
+        await NETstate = "EXIT";
     or
         await NETstate = "UNINITED";
     end either;
-    goto Action;
+    if NETstate /= "EXIT" then
+        goto Action;
+    else
+        goto EXIT;
+    end if;
+  EXIT: skip
 end process;
 
 process AMStateMachine = "AM"
@@ -103,11 +108,17 @@ begin
       or
         await AMstate = "STOP";
     or
-        await AMstate = "INVAILD";
+        await AMstate = "EXIT";
     or
         await AMstate = "UNINITED";
     end either;
-    goto Action;
+    if AMstate /= "EXIT" then
+        goto Action;
+    else
+        goto EXIT;
+    end if;
+  EXIT:
+    skip
 end process;
 
 process BMStateMachine = "BM"
@@ -115,17 +126,27 @@ begin
   Action:
     either 
         await BMstate = "START";
-        BMtick := BMtick + 3;
-        await AMstate = "START";
-        BMtick := AMtick
-      or
+        if AMstate = "START" then
+          if BMtick - AMtick < 25  /\  BMtick - AMtick > -25 then
+            BMtick := AMtick; 
+          end if;
+        else
+          BMtick := BMtick + 3;
+        end if;
+    or
         await BMstate = "STOP";
     or
-        await BMstate = "INVAILD";
+        await BMstate = "EXIT";
     or
         await BMstate = "UNINITED";
     end either;
-    goto Action;
+    if BMstate /= "EXIT" then
+        goto Action;
+    else
+        goto EXIT;
+    end if;
+  EXIT:
+    skip
 end process;
 
 process SENStateMachine = "SEN"
@@ -133,19 +154,45 @@ begin
   Action:
     either 
         await SENstate = "START";
-        SENtick := SENtick + 4;
-        await AMstate = "START";
-        SENtick := AMtick
-        await BMstate = "START";
-        SENtick := BMtick
-      or
+        if AMstate = "START" then
+          if SENtick - AMtick < 25  /\  SENtick - AMtick > -25 then
+            SENtick := AMtick; 
+          end if;
+        elsif BMstate = "START" then
+          if SENtick - BMtick < 25  /\  SENtick - BMtick > -25 then
+            SENtick := BMtick; 
+          end if;
+        else
+          SENtick := SENtick + 4;
+        end if;
+    or
         await SENstate = "STOP";
     or
-        await SENstate = "INVAILD";
+        await SENstate = "EXIT";
     or
         await SENstate = "UNINITED";
     end either;
-    goto Action;
+    if SENstate /= "EXIT" then
+        goto Action;
+    else
+        goto EXIT;
+    end if;
+  EXIT:
+    skip
+end process;
+
+process CheckRules = "CheckRules"
+begin
+  START:
+    NETtransition("UNINITED", "START");
+  EXIT:
+    NETtransition("START", "EXIT");
+  EXIT2:
+    AMtransition("START", "EXIT");
+  EXIT3:
+    BMtransition("START", "EXIT");
+  EXIT4:
+    SENtransition("START", "EXIT");
 end process;
 
 

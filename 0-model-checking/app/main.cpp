@@ -18,7 +18,7 @@ struct StopEvent {};
 struct InvaildEvent {};
 
 // 状态机定义
-typedef enum { invaild, start, stop, uninit } Status;
+typedef enum { sexit, start, stop, uninit } Status;
 struct Context {
   time_t ts = 0;
   Status status = Status::uninit;
@@ -29,7 +29,7 @@ using Config = hfsm2::Config ::ContextT<Context&>;
 
 using M = hfsm2::MachineT<Config>;
 
-using TimeServiceFSM = M::PeerRoot<struct UNINITED, struct START, struct STOP, struct INVAILD>;
+using TimeServiceFSM = M::PeerRoot<struct UNINITED, struct START, struct STOP, struct EXIT>;
 
 // forward_delcare
 int sync_before_start(struct Context& context);
@@ -45,7 +45,7 @@ struct BaseReact : TimeServiceFSM::State {
 
   void react(const StopEvent&, FullControl& control) noexcept { control.changeTo<STOP>(); }
 
-  void react(const InvaildEvent&, FullControl& control) noexcept { control.changeTo<INVAILD>(); }
+  void react(const InvaildEvent&, FullControl& control) noexcept { control.changeTo<EXIT>(); }
 
   void react(const SetTimeEvent& event, FullControl& control) noexcept {
     control.context().ts = event.ts;
@@ -68,7 +68,7 @@ struct START : BaseReact {
   using BaseReact::react;
 
   void enter(PlanControl& control) { control.context().status = Status::start; }
-  void exit(PlanControl& control) {}
+  void sexit(PlanControl& control) {}
 
   void update(FullControl& control) {
     BaseReact::update(control);
@@ -82,10 +82,13 @@ struct STOP : BaseReact {
   void enter(PlanControl& control) { control.context().status = Status::stop; }
 };
 
-struct INVAILD : BaseReact {
-  using BaseReact::react;
+struct EXIT : BaseReact {
+  template <typename Event>
+  void react(const Event&, FullControl&) noexcept {
+    // not resumeable
+  }
 
-  void enter(PlanControl& control) { control.context().status = Status::invaild; }
+  void enter(PlanControl& control) { control.context().status = Status::sexit; }
 };
 
 struct UNINITED : BaseReact {
@@ -151,7 +154,7 @@ int regular_sync_time(struct Context& context) {
 void NET() {
   while (!NETmachine.isActive<START>()) NETmachine.react(StartEvent{});
 
-  while (true) {
+  while (!NETmachine.isActive<EXIT>()) {
     NETmachine.update();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
@@ -160,7 +163,7 @@ void NET() {
 void AM() {
   while (!AMmachine.isActive<START>()) AMmachine.react(StartEvent{});
 
-  while (true) {
+  while (!AMmachine.isActive<EXIT>()) {
     AMmachine.update();
     std::this_thread::sleep_for(std::chrono::milliseconds(100 + rand() % 10));
   }
@@ -169,7 +172,7 @@ void AM() {
 void BM() {
   while (!BMmachine.isActive<START>()) BMmachine.react(StartEvent{});
 
-  while (true) {
+  while (!BMmachine.isActive<EXIT>()) {
     BMmachine.update();
     std::this_thread::sleep_for(std::chrono::milliseconds(100 + rand() % 25));
   }
@@ -178,7 +181,7 @@ void BM() {
 void SEN() {
   while (!SENmachine.isActive<START>()) SENmachine.react(StartEvent{});
 
-  while (true) {
+  while (!SENmachine.isActive<EXIT>()) {
     SENmachine.update();
     std::this_thread::sleep_for(std::chrono::milliseconds(100 + rand() % 25));
   }
