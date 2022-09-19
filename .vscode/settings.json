@@ -48,7 +48,14 @@
         "typeindex": "cpp",
         "chrono": "cpp",
         "ratio": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "cstring": "cpp",
+        "ctime": "cpp",
+        "forward_list": "cpp",
+        "map": "cpp",
+        "iomanip": "cpp",
+        "condition_variable": "cpp",
+        "mutex": "cpp"
     },
     "cpplint.verbose": 0,
     "C_Cpp.dimInactiveRegions": true
