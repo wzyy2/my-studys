@@ -7,7 +7,7 @@ add_library(${PROJECT_NAME} SHARED
 
 add_library(libs::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
-set(CMAKE_CXX_FLAGS ${ADDITIONAL_CMAKE_CXX_FLAGS} " -fpermissive")
+set(CMAKE_CXX_FLAGS ${ADDITIONAL_CMAKE_CXX_FLAGS} " -fpermissive -fPIC")
 
 target_link_libraries(${PROJECT_NAME}
 	PRIVATE
