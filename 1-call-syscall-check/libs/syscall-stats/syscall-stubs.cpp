@@ -1,5 +1,7 @@
 #include "syscall-stats.h"
 
+#include <mutex>
+
 #include <dlfcn.h>
 #include <grp.h>
 #include <linux/bpf.h>
@@ -417,290 +419,295 @@ int (*real_statx)(int dirfd, const char *pathname, int flags, unsigned int mask,
 
 static std::mutex mtx;
 
+#define CHECK_DLSYM(func)                   \
+  if (func == NULL) native_init_syscalls(); \
+  StatsThread::getInstance().DoStats(SysCallIndex::##func);
+
+#define SET_DLSYM(var1, var2)                   \
+  dlsym(var1, var2)
+
 void native_init_syscalls(void) {
   std::lock_guard<std::mutex> lock_init(mtx);
 
   DEBUG_MSG(4, __func__);
-  *(void **)(&real_puts) = dlsym(RTLD_NEXT, "puts");
-  *(void **)(&real_syscall) = dlsym(RTLD_NEXT, "syscall");
-  *(void **)(&real_read) = dlsym(RTLD_NEXT, "read");
-  *(void **)(&real_write) = dlsym(RTLD_NEXT, "write");
-  *(void **)(&real_open) = dlsym(RTLD_NEXT, "open");
-  *(void **)(&real_close) = dlsym(RTLD_NEXT, "close");
-  *(void **)(&real_stat) = dlsym(RTLD_NEXT, "stat");
-  *(void **)(&real_fstat) = dlsym(RTLD_NEXT, "fstat");
-  *(void **)(&real_lstat) = dlsym(RTLD_NEXT, "lstat");
-  *(void **)(&real_poll) = dlsym(RTLD_NEXT, "poll");
-  *(void **)(&real_lseek) = dlsym(RTLD_NEXT, "lseek");
-  *(void **)(&real_mmap) = dlsym(RTLD_NEXT, "mmap");
-  *(void **)(&real_mprotect) = dlsym(RTLD_NEXT, "mprotect");
-  *(void **)(&real_munmap) = dlsym(RTLD_NEXT, "munmap");
-  *(void **)(&real_brk) = dlsym(RTLD_NEXT, "brk");
-  *(void **)(&real_sbrk) = dlsym(RTLD_NEXT, "sbrk");
-  *(void **)(&real_ioctl) = dlsym(RTLD_NEXT, "ioctl");
-  *(void **)(&real_pread) = dlsym(RTLD_NEXT, "pread");
-  *(void **)(&real_pwrite) = dlsym(RTLD_NEXT, "pwrite");
-  *(void **)(&real_readv) = dlsym(RTLD_NEXT, "readv");
-  *(void **)(&real_writev) = dlsym(RTLD_NEXT, "writev");
-  *(void **)(&real_access) = dlsym(RTLD_NEXT, "access");
-  *(void **)(&real_pipe) = dlsym(RTLD_NEXT, "pipe");
-  *(void **)(&real_select) = dlsym(RTLD_NEXT, "select");
-  *(void **)(&real_sched_yield) = dlsym(RTLD_NEXT, "sched_yield");
-  *(void **)(&real_mremap) = dlsym(RTLD_NEXT, "mremap");
-  *(void **)(&real_msync) = dlsym(RTLD_NEXT, "msync");
-  *(void **)(&real_mincore) = dlsym(RTLD_NEXT, "mincore");
-  *(void **)(&real_madvise) = dlsym(RTLD_NEXT, "madvise");
-  *(void **)(&real_shmget) = dlsym(RTLD_NEXT, "shmget");
-  *(void **)(&real_shmat) = dlsym(RTLD_NEXT, "shmat");
-  *(void **)(&real_shmctl) = dlsym(RTLD_NEXT, "shmctl");
-  *(void **)(&real_dup) = dlsym(RTLD_NEXT, "dup");
-  *(void **)(&real_dup2) = dlsym(RTLD_NEXT, "dup2");
-  *(void **)(&real_pause) = dlsym(RTLD_NEXT, "pause");
-  *(void **)(&real_nanosleep) = dlsym(RTLD_NEXT, "nanosleep");
-  *(void **)(&real_getitimer) = dlsym(RTLD_NEXT, "getitimer");
-  *(void **)(&real_alarm) = dlsym(RTLD_NEXT, "alarm");
-  *(void **)(&real_setitimer) = dlsym(RTLD_NEXT, "setitimer");
-  *(void **)(&real_getpid) = dlsym(RTLD_NEXT, "getpid");
-  *(void **)(&real_sendfile) = dlsym(RTLD_NEXT, "sendfile");
-  *(void **)(&real_socket) = dlsym(RTLD_NEXT, "socket");
-  *(void **)(&real_connect) = dlsym(RTLD_NEXT, "connect");
-  *(void **)(&real_accept) = dlsym(RTLD_NEXT, "accept");
-  *(void **)(&real_sendto) = dlsym(RTLD_NEXT, "sendto");
-  *(void **)(&real_recvfrom) = dlsym(RTLD_NEXT, "recvfrom");
-  *(void **)(&real_sendmsg) = dlsym(RTLD_NEXT, "sendmsg");
-  *(void **)(&real_recvmsg) = dlsym(RTLD_NEXT, "recvmsg");
-  *(void **)(&real_shutdown) = dlsym(RTLD_NEXT, "shutdown");
-  *(void **)(&real_bind) = dlsym(RTLD_NEXT, "bind");
-  *(void **)(&real_listen) = dlsym(RTLD_NEXT, "listen");
-  *(void **)(&real_getsockname) = dlsym(RTLD_NEXT, "getsockname");
-  *(void **)(&real_getpeername) = dlsym(RTLD_NEXT, "getpeername");
-  *(void **)(&real_socketpair) = dlsym(RTLD_NEXT, "socketpair");
-  *(void **)(&real_socketpair) = dlsym(RTLD_NEXT, "socketpair");
-  *(void **)(&real_setsockopt) = dlsym(RTLD_NEXT, "socketpair");
-  *(void **)(&real_getsockopt) = dlsym(RTLD_NEXT, "getsockopt");
-  *(void **)(&real_clone) = dlsym(RTLD_NEXT, "clone");
-  *(void **)(&real_fork) = dlsym(RTLD_NEXT, "fork");
-  *(void **)(&real_vfork) = dlsym(RTLD_NEXT, "vfork");
-  *(void **)(&real_execve) = dlsym(RTLD_NEXT, "execve");
-  *(void **)(&real_wait4) = dlsym(RTLD_NEXT, "wait4");
-  *(void **)(&real_kill) = dlsym(RTLD_NEXT, "kill");
-  *(void **)(&real_uname) = dlsym(RTLD_NEXT, "uname");
-  *(void **)(&real_semget) = dlsym(RTLD_NEXT, "semget");
-  *(void **)(&real_semop) = dlsym(RTLD_NEXT, "semop");
-  *(void **)(&real_semctl) = dlsym(RTLD_NEXT, "semctl");
-  *(void **)(&real_shmdt) = dlsym(RTLD_NEXT, "shmdt");
-  *(void **)(&real_msgget) = dlsym(RTLD_NEXT, "msgget");
-  *(void **)(&real_msgsnd) = dlsym(RTLD_NEXT, "msgsnd");
-  *(void **)(&real_msgrcv) = dlsym(RTLD_NEXT, "msgrcv");
-  *(void **)(&real_msgctl) = dlsym(RTLD_NEXT, "msgctl");
-  *(void **)(&real_fcntl) = dlsym(RTLD_NEXT, "fcntl");
-  *(void **)(&real_flock) = dlsym(RTLD_NEXT, "flock");
-  *(void **)(&real_fsync) = dlsym(RTLD_NEXT, "fsync");
-  *(void **)(&real_fdatasync) = dlsym(RTLD_NEXT, "fdatasync");
-  *(void **)(&real_truncate) = dlsym(RTLD_NEXT, "truncate");
-  *(void **)(&real_ftruncate) = dlsym(RTLD_NEXT, "ftruncate");
-  *(void **)(&real_getdents64) = dlsym(RTLD_NEXT, "getdents64");
-  *(void **)(&real_getcwd) = dlsym(RTLD_NEXT, "getcwd");
-  *(void **)(&real_chdir) = dlsym(RTLD_NEXT, "chdir");
-  *(void **)(&real_fchdir) = dlsym(RTLD_NEXT, "fchdir");
-  *(void **)(&real_rename) = dlsym(RTLD_NEXT, "rename");
-  *(void **)(&real_mkdir) = dlsym(RTLD_NEXT, "mkdir");
-  *(void **)(&real_rmdir) = dlsym(RTLD_NEXT, "rmdir");
-  *(void **)(&real_creat) = dlsym(RTLD_NEXT, "creat");
-  *(void **)(&real_link) = dlsym(RTLD_NEXT, "link");
-  *(void **)(&real_unlink) = dlsym(RTLD_NEXT, "unlink");
-  *(void **)(&real_symlink) = dlsym(RTLD_NEXT, "symlink");
-  *(void **)(&real_readlink) = dlsym(RTLD_NEXT, "readlink");
-  *(void **)(&real_chmod) = dlsym(RTLD_NEXT, "chmod");
-  *(void **)(&real_fchown) = dlsym(RTLD_NEXT, "fchown");
-  *(void **)(&real_chown) = dlsym(RTLD_NEXT, "chown");
-  *(void **)(&real_lchown) = dlsym(RTLD_NEXT, "lchown");
-  *(void **)(&real_umask) = dlsym(RTLD_NEXT, "umask");
-  *(void **)(&real_getcwd) = dlsym(RTLD_NEXT, "getcwd");
-  *(void **)(&real_gettimeofday) = dlsym(RTLD_NEXT, "gettimeofday");
-  *(void **)(&real_getrlimit) = dlsym(RTLD_NEXT, "getrlimit");
-  *(void **)(&real_getrusage) = dlsym(RTLD_NEXT, "getrusage");
-  *(void **)(&real_sysinfo) = dlsym(RTLD_NEXT, "sysinfo");
-  *(void **)(&real_times) = dlsym(RTLD_NEXT, "times");
-  *(void **)(&real_ptrace) = dlsym(RTLD_NEXT, "ptrace");
-  *(void **)(&real_getuid) = dlsym(RTLD_NEXT, "getuid");
-  *(void **)(&real_unlink) = dlsym(RTLD_NEXT, "unlink");
-  *(void **)(&real_syslog) = dlsym(RTLD_NEXT, "syslog");
-  *(void **)(&real_vsyslog) = dlsym(RTLD_NEXT, "vsyslog");
-  *(void **)(&real_getgid) = dlsym(RTLD_NEXT, "getgid");
-  *(void **)(&real_setuid) = dlsym(RTLD_NEXT, "setuid");
-  *(void **)(&real_setgid) = dlsym(RTLD_NEXT, "setgid");
-  *(void **)(&real_geteuid) = dlsym(RTLD_NEXT, "geteuid");
-  *(void **)(&real_getegid) = dlsym(RTLD_NEXT, "getegid");
-  *(void **)(&real_setpgid) = dlsym(RTLD_NEXT, "setpgid");
-  *(void **)(&real_getpgid) = dlsym(RTLD_NEXT, "getpgid");
-  *(void **)(&real_getpgrp) = dlsym(RTLD_NEXT, "getpgrp");
-  *(void **)(&real_setsid) = dlsym(RTLD_NEXT, "setsid");
-  *(void **)(&real_setreuid) = dlsym(RTLD_NEXT, "setreuid");
-  *(void **)(&real_setregid) = dlsym(RTLD_NEXT, "setregid");
-  *(void **)(&real_getgroups) = dlsym(RTLD_NEXT, "getgroups");
-  *(void **)(&real_setgroups) = dlsym(RTLD_NEXT, "setgroups");
-  *(void **)(&real_setresuid) = dlsym(RTLD_NEXT, "setresuid");
-  *(void **)(&real_getresuid) = dlsym(RTLD_NEXT, "getresuid");
-  *(void **)(&real_setresgid) = dlsym(RTLD_NEXT, "setresgid");
-  *(void **)(&real_getresgid) = dlsym(RTLD_NEXT, "getresgid");
-  *(void **)(&real_setfsuid) = dlsym(RTLD_NEXT, "setfsuid");
-  *(void **)(&real_setfsgid) = dlsym(RTLD_NEXT, "setfsgid");
-  *(void **)(&real_getsid) = dlsym(RTLD_NEXT, "getsid");
-  *(void **)(&real_sigaltstack) = dlsym(RTLD_NEXT, "sigaltstack");
-  *(void **)(&real_utime) = dlsym(RTLD_NEXT, "utime");
-  *(void **)(&real_mknod) = dlsym(RTLD_NEXT, "mknod");
-  *(void **)(&real_uselib) = dlsym(RTLD_NEXT, "uselib");
-  *(void **)(&real_personality) = dlsym(RTLD_NEXT, "personality");
-  *(void **)(&real_ustat) = dlsym(RTLD_NEXT, "ustat");
-  *(void **)(&real_statfs) = dlsym(RTLD_NEXT, "statfs");
-  *(void **)(&real_fstatfs) = dlsym(RTLD_NEXT, "fstatfs");
-  *(void **)(&real_sysfs) = dlsym(RTLD_NEXT, "sysfs");
-  *(void **)(&real_setpriority) = dlsym(RTLD_NEXT, "setpriority");
-  *(void **)(&real_sched_setparam) = dlsym(RTLD_NEXT, "sched_setparam");
-  *(void **)(&real_getpriority) = dlsym(RTLD_NEXT, "getpriority");
-  *(void **)(&real_sched_getparam) = dlsym(RTLD_NEXT, "sched_getparam");
-  *(void **)(&real_sched_setscheduler) = dlsym(RTLD_NEXT, "sched_setscheduler");
-  *(void **)(&real_sched_getscheduler) = dlsym(RTLD_NEXT, "sched_getscheduler");
-  *(void **)(&real_sched_get_priority_max) = dlsym(RTLD_NEXT, "sched_get_priority_max");
-  *(void **)(&real_sched_get_priority_min) = dlsym(RTLD_NEXT, "sched_get_priority_min");
-  *(void **)(&real_sched_rr_get_interval) = dlsym(RTLD_NEXT, "sched_rr_get_interval");
-  *(void **)(&real_mlock) = dlsym(RTLD_NEXT, "mlock");
-  *(void **)(&real_munlock) = dlsym(RTLD_NEXT, "munlock");
-  *(void **)(&real_mlockall) = dlsym(RTLD_NEXT, "mlockall");
-  *(void **)(&real_munlockall) = dlsym(RTLD_NEXT, "munlockall");
-  *(void **)(&real_vhangup) = dlsym(RTLD_NEXT, "vhangup");
-  *(void **)(&real__sysctl) = dlsym(RTLD_NEXT, "_sysctl");
-  *(void **)(&real_prctl) = dlsym(RTLD_NEXT, "prctl");
-  *(void **)(&real_adjtimex) = dlsym(RTLD_NEXT, "adjtimex");
-  *(void **)(&real_setrlimit) = dlsym(RTLD_NEXT, "setrlimit");
-  *(void **)(&real_chroot) = dlsym(RTLD_NEXT, "chroot");
-  *(void **)(&real_sync) = dlsym(RTLD_NEXT, "sync");
-  *(void **)(&real_acct) = dlsym(RTLD_NEXT, "acct");
-  *(void **)(&real_settimeofday) = dlsym(RTLD_NEXT, "settimeofday");
-  *(void **)(&real_mount) = dlsym(RTLD_NEXT, "mount");
-  *(void **)(&real_umount2) = dlsym(RTLD_NEXT, "umount2");
-  *(void **)(&real_swapon) = dlsym(RTLD_NEXT, "swapon");
-  *(void **)(&real_swapoff) = dlsym(RTLD_NEXT, "swapoff");
-  *(void **)(&real_reboot) = dlsym(RTLD_NEXT, "reboot");
-  *(void **)(&real_sethostname) = dlsym(RTLD_NEXT, "sethostname");
-  *(void **)(&real_setdomainname) = dlsym(RTLD_NEXT, "setdomainname");
-  *(void **)(&real_iopl) = dlsym(RTLD_NEXT, "iopl");
-  *(void **)(&real_ioperm) = dlsym(RTLD_NEXT, "ioperm");
-  *(void **)(&real_quotactl) = dlsym(RTLD_NEXT, "quotactl");
-  *(void **)(&real_gettid) = dlsym(RTLD_NEXT, "gettid");
-  *(void **)(&real_readahead) = dlsym(RTLD_NEXT, "readahead");
-  *(void **)(&real_setxattr) = dlsym(RTLD_NEXT, "setxattr");
-  *(void **)(&real_lsetxattr) = dlsym(RTLD_NEXT, "lsetxattr");
-  *(void **)(&real_fsetxattr) = dlsym(RTLD_NEXT, "fsetxattr");
-  *(void **)(&real_getxattr) = dlsym(RTLD_NEXT, "getxattr");
-  *(void **)(&real_lgetxattr) = dlsym(RTLD_NEXT, "lgetxattr");
-  *(void **)(&real_listxattr) = dlsym(RTLD_NEXT, "listxattr");
-  *(void **)(&real_fgetxattr) = dlsym(RTLD_NEXT, "fgetxattr");
-  *(void **)(&real_llistxattr) = dlsym(RTLD_NEXT, "llistxattr");
-  *(void **)(&real_flistxattr) = dlsym(RTLD_NEXT, "flistxattr");
-  *(void **)(&real_removexattr) = dlsym(RTLD_NEXT, "removexattr");
-  *(void **)(&real_lremovexattr) = dlsym(RTLD_NEXT, "lremovexattr");
-  *(void **)(&real_fremovexattr) = dlsym(RTLD_NEXT, "fremovexattr");
-  *(void **)(&real_time) = dlsym(RTLD_NEXT, "time");
-  *(void **)(&real_sched_setaffinity) = dlsym(RTLD_NEXT, "sched_setaffinity");
-  *(void **)(&real_sched_getaffinity) = dlsym(RTLD_NEXT, "sched_getaffinity");
-  *(void **)(&real_epoll_create) = dlsym(RTLD_NEXT, "epoll_create");
-  *(void **)(&real_remap_file_pages) = dlsym(RTLD_NEXT, "remap_file_pages");
-  *(void **)(&real_semtimedop) = dlsym(RTLD_NEXT, "semtimedop");
-  *(void **)(&real_posix_fadvise) = dlsym(RTLD_NEXT, "posix_fadvise");
-  *(void **)(&real_timer_create) = dlsym(RTLD_NEXT, "timer_create");
-  *(void **)(&real_timer_settime) = dlsym(RTLD_NEXT, "timer_settime");
-  *(void **)(&real_timer_gettime) = dlsym(RTLD_NEXT, "timer_gettime");
-  *(void **)(&real_timer_getoverrun) = dlsym(RTLD_NEXT, "timer_getoverrun");
-  *(void **)(&real_timer_delete) = dlsym(RTLD_NEXT, "timer_delete");
-  *(void **)(&real_clock_gettime) = dlsym(RTLD_NEXT, "clock_gettime");
-  *(void **)(&real_clock_settime) = dlsym(RTLD_NEXT, "clock_settime");
-  *(void **)(&real_clock_getres) = dlsym(RTLD_NEXT, "clock_getres");
-  *(void **)(&real_clock_nanosleep) = dlsym(RTLD_NEXT, "clock_nanosleep");
-  *(void **)(&real_epoll_wait) = dlsym(RTLD_NEXT, "epoll_wait");
-  *(void **)(&real_epoll_ctl) = dlsym(RTLD_NEXT, "epoll_ctl");
-  *(void **)(&real_tgkill) = dlsym(RTLD_NEXT, "tgkill");
-  *(void **)(&real_utimes) = dlsym(RTLD_NEXT, "utimes");
-  *(void **)(&real_set_mempolicy) = dlsym(RTLD_NEXT, "set_mempolicy");
-  *(void **)(&real_mq_open) = dlsym(RTLD_NEXT, "mq_open");
-  *(void **)(&real_mq_unlink) = dlsym(RTLD_NEXT, "mq_unlink");
-  *(void **)(&real_mq_timedsend) = dlsym(RTLD_NEXT, "mq_timedsend");
-  *(void **)(&real_mq_timedreceive) = dlsym(RTLD_NEXT, "mq_timedreceive");
-  *(void **)(&real_mq_notify) = dlsym(RTLD_NEXT, "mq_notify");
-  *(void **)(&real_waitid) = dlsym(RTLD_NEXT, "waitid");
-  *(void **)(&real_inotify_init) = dlsym(RTLD_NEXT, "inotify_init");
-  *(void **)(&real_inotify_add_watch) = dlsym(RTLD_NEXT, "inotify_add_watch");
-  *(void **)(&real_inotify_rm_watch) = dlsym(RTLD_NEXT, "inotify_rm_watch");
-  *(void **)(&real_openat) = dlsym(RTLD_NEXT, "openat");
-  *(void **)(&real_mkdirat) = dlsym(RTLD_NEXT, "mkdirat");
-  *(void **)(&real_mknodat) = dlsym(RTLD_NEXT, "mknodat");
-  *(void **)(&real_fchownat) = dlsym(RTLD_NEXT, "fchownat");
-  *(void **)(&real_futimesat) = dlsym(RTLD_NEXT, "futimesat");
-  *(void **)(&real_fstatat) = dlsym(RTLD_NEXT, "fstatat");
-  *(void **)(&real_unlinkat) = dlsym(RTLD_NEXT, "unlinkat");
-  *(void **)(&real_renameat) = dlsym(RTLD_NEXT, "renameat");
-  *(void **)(&real_linkat) = dlsym(RTLD_NEXT, "linkat");
-  *(void **)(&real_symlinkat) = dlsym(RTLD_NEXT, "symlinkat");
-  *(void **)(&real_readlinkat) = dlsym(RTLD_NEXT, "readlinkat");
-  *(void **)(&real_fchmodat) = dlsym(RTLD_NEXT, "fchmodat");
-  *(void **)(&real_faccessat) = dlsym(RTLD_NEXT, "faccessat");
-  *(void **)(&real_pselect) = dlsym(RTLD_NEXT, "pselect");
-  *(void **)(&real_ppoll) = dlsym(RTLD_NEXT, "ppoll");
-  *(void **)(&real_unshare) = dlsym(RTLD_NEXT, "unshare");
-  *(void **)(&real_splice) = dlsym(RTLD_NEXT, "splice");
-  *(void **)(&real_tee) = dlsym(RTLD_NEXT, "tee");
-  *(void **)(&real_sync_file_range) = dlsym(RTLD_NEXT, "sync_file_range");
-  *(void **)(&real_vmsplice) = dlsym(RTLD_NEXT, "vmsplice");
-  *(void **)(&real_utimensat) = dlsym(RTLD_NEXT, "utimensat");
-  *(void **)(&real_epoll_pwait) = dlsym(RTLD_NEXT, "epoll_pwait");
-  *(void **)(&real_signalfd) = dlsym(RTLD_NEXT, "signalfd");
-  *(void **)(&real_timerfd_create) = dlsym(RTLD_NEXT, "timerfd_create");
-  *(void **)(&real_eventfd) = dlsym(RTLD_NEXT, "eventfd");
-  *(void **)(&real_fallocate) = dlsym(RTLD_NEXT, "fallocate");
-  *(void **)(&real_timerfd_settime) = dlsym(RTLD_NEXT, "timerfd_settime");
-  *(void **)(&real_timerfd_gettime) = dlsym(RTLD_NEXT, "timerfd_gettime");
-  *(void **)(&real_accept4) = dlsym(RTLD_NEXT, "accept4");
-  *(void **)(&real_epoll_create1) = dlsym(RTLD_NEXT, "epoll_create1");
-  *(void **)(&real_dup3) = dlsym(RTLD_NEXT, "dup3");
-  *(void **)(&real_pipe2) = dlsym(RTLD_NEXT, "pipe2");
-  *(void **)(&real_inotify_init1) = dlsym(RTLD_NEXT, "inotify_init1");
-  *(void **)(&real_preadv) = dlsym(RTLD_NEXT, "preadv");
-  *(void **)(&real_pwritev) = dlsym(RTLD_NEXT, "pwritev");
-  *(void **)(&real_recvmmsg) = dlsym(RTLD_NEXT, "pwritev");
-  *(void **)(&real_fanotify_init) = dlsym(RTLD_NEXT, "fanotify_init");
-  *(void **)(&real_fanotify_mark) = dlsym(RTLD_NEXT, "fanotify_mark");
-  *(void **)(&real_prlimit) = dlsym(RTLD_NEXT, "prlimit");
-  *(void **)(&real_name_to_handle_at) = dlsym(RTLD_NEXT, "name_to_handle_at");
-  *(void **)(&real_open_by_handle_at) = dlsym(RTLD_NEXT, "open_by_handle_at");
-  *(void **)(&real_clock_adjtime) = dlsym(RTLD_NEXT, "clock_adjtime");
-  *(void **)(&real_syncfs) = dlsym(RTLD_NEXT, "syncfs");
-  *(void **)(&real_sendmmsg) = dlsym(RTLD_NEXT, "sendmmsg");
-  *(void **)(&real_setns) = dlsym(RTLD_NEXT, "setns");
-  *(void **)(&real_getcpu) = dlsym(RTLD_NEXT, "getcpu");
-  *(void **)(&real_process_vm_readv) = dlsym(RTLD_NEXT, "process_vm_readv");
-  *(void **)(&real_process_vm_writev) = dlsym(RTLD_NEXT, "process_vm_writev");
-  *(void **)(&real_renameat2) = dlsym(RTLD_NEXT, "renameat2");
-  *(void **)(&real_getrandom) = dlsym(RTLD_NEXT, "getrandom");
-  *(void **)(&real_memfd_create) = dlsym(RTLD_NEXT, "memfd_create");
-  *(void **)(&real_bpf) = dlsym(RTLD_NEXT, "bpf");
-  *(void **)(&real_execveat) = dlsym(RTLD_NEXT, "execveat");
-  *(void **)(&real_mlock2) = dlsym(RTLD_NEXT, "mlock2");
-  *(void **)(&real_copy_file_range) = dlsym(RTLD_NEXT, "copy_file_range");
-  *(void **)(&real_preadv2) = dlsym(RTLD_NEXT, "preadv2");
-  *(void **)(&real_pwritev2) = dlsym(RTLD_NEXT, "pwritev2");
-  *(void **)(&real_pkey_mprotect) = dlsym(RTLD_NEXT, "pkey_mprotect");
-  *(void **)(&real_pkey_alloc) = dlsym(RTLD_NEXT, "pkey_alloc");
-  *(void **)(&real_pkey_free) = dlsym(RTLD_NEXT, "pkey_free");
-  *(void **)(&real_statx) = dlsym(RTLD_NEXT, "statx");
-}
+  *(void **)(&real_puts) = SET_DLSYM(RTLD_NEXT, "puts");
+  *(void **)(&real_syscall) = SET_DLSYM(RTLD_NEXT, "syscall");
 
-#define CHECK_DLSYM(func)      \
-  if (func == NULL) native_init_syscalls();
+  *(void **)(&real_read) = SET_DLSYM(RTLD_NEXT, "read");
+  *(void **)(&real_write) = SET_DLSYM(RTLD_NEXT, "write");
+  *(void **)(&real_open) = SET_DLSYM(RTLD_NEXT, "open");
+  *(void **)(&real_close) = SET_DLSYM(RTLD_NEXT, "close");
+  *(void **)(&real_stat) = SET_DLSYM(RTLD_NEXT, "stat");
+  *(void **)(&real_fstat) = SET_DLSYM(RTLD_NEXT, "fstat");
+  *(void **)(&real_lstat) = SET_DLSYM(RTLD_NEXT, "lstat");
+  *(void **)(&real_poll) = SET_DLSYM(RTLD_NEXT, "poll");
+  *(void **)(&real_lseek) = SET_DLSYM(RTLD_NEXT, "lseek");
+  *(void **)(&real_mmap) = SET_DLSYM(RTLD_NEXT, "mmap");
+  *(void **)(&real_mprotect) = SET_DLSYM(RTLD_NEXT, "mprotect");
+  *(void **)(&real_munmap) = SET_DLSYM(RTLD_NEXT, "munmap");
+  *(void **)(&real_brk) = SET_DLSYM(RTLD_NEXT, "brk");
+  *(void **)(&real_sbrk) = SET_DLSYM(RTLD_NEXT, "sbrk");
+  *(void **)(&real_ioctl) = SET_DLSYM(RTLD_NEXT, "ioctl");
+  *(void **)(&real_pread) = SET_DLSYM(RTLD_NEXT, "pread");
+  *(void **)(&real_pwrite) = SET_DLSYM(RTLD_NEXT, "pwrite");
+  *(void **)(&real_readv) = SET_DLSYM(RTLD_NEXT, "readv");
+  *(void **)(&real_writev) = SET_DLSYM(RTLD_NEXT, "writev");
+  *(void **)(&real_access) = SET_DLSYM(RTLD_NEXT, "access");
+  *(void **)(&real_pipe) = SET_DLSYM(RTLD_NEXT, "pipe");
+  *(void **)(&real_select) = SET_DLSYM(RTLD_NEXT, "select");
+  *(void **)(&real_sched_yield) = SET_DLSYM(RTLD_NEXT, "sched_yield");
+  *(void **)(&real_mremap) = SET_DLSYM(RTLD_NEXT, "mremap");
+  *(void **)(&real_msync) = SET_DLSYM(RTLD_NEXT, "msync");
+  *(void **)(&real_mincore) = SET_DLSYM(RTLD_NEXT, "mincore");
+  *(void **)(&real_madvise) = SET_DLSYM(RTLD_NEXT, "madvise");
+  *(void **)(&real_shmget) = SET_DLSYM(RTLD_NEXT, "shmget");
+  *(void **)(&real_shmat) = SET_DLSYM(RTLD_NEXT, "shmat");
+  *(void **)(&real_shmctl) = SET_DLSYM(RTLD_NEXT, "shmctl");
+  *(void **)(&real_dup) = SET_DLSYM(RTLD_NEXT, "dup");
+  *(void **)(&real_dup2) = SET_DLSYM(RTLD_NEXT, "dup2");
+  *(void **)(&real_pause) = SET_DLSYM(RTLD_NEXT, "pause");
+  *(void **)(&real_nanosleep) = SET_DLSYM(RTLD_NEXT, "nanosleep");
+  *(void **)(&real_getitimer) = SET_DLSYM(RTLD_NEXT, "getitimer");
+  *(void **)(&real_alarm) = SET_DLSYM(RTLD_NEXT, "alarm");
+  *(void **)(&real_setitimer) = SET_DLSYM(RTLD_NEXT, "setitimer");
+  *(void **)(&real_getpid) = SET_DLSYM(RTLD_NEXT, "getpid");
+  *(void **)(&real_sendfile) = SET_DLSYM(RTLD_NEXT, "sendfile");
+  *(void **)(&real_socket) = SET_DLSYM(RTLD_NEXT, "socket");
+  *(void **)(&real_connect) = SET_DLSYM(RTLD_NEXT, "connect");
+  *(void **)(&real_accept) = SET_DLSYM(RTLD_NEXT, "accept");
+  *(void **)(&real_sendto) = SET_DLSYM(RTLD_NEXT, "sendto");
+  *(void **)(&real_recvfrom) = SET_DLSYM(RTLD_NEXT, "recvfrom");
+  *(void **)(&real_sendmsg) = SET_DLSYM(RTLD_NEXT, "sendmsg");
+  *(void **)(&real_recvmsg) = SET_DLSYM(RTLD_NEXT, "recvmsg");
+  *(void **)(&real_shutdown) = SET_DLSYM(RTLD_NEXT, "shutdown");
+  *(void **)(&real_bind) = SET_DLSYM(RTLD_NEXT, "bind");
+  *(void **)(&real_listen) = SET_DLSYM(RTLD_NEXT, "listen");
+  *(void **)(&real_getsockname) = SET_DLSYM(RTLD_NEXT, "getsockname");
+  *(void **)(&real_getpeername) = SET_DLSYM(RTLD_NEXT, "getpeername");
+  *(void **)(&real_socketpair) = SET_DLSYM(RTLD_NEXT, "socketpair");
+  *(void **)(&real_socketpair) = SET_DLSYM(RTLD_NEXT, "socketpair");
+  *(void **)(&real_setsockopt) = SET_DLSYM(RTLD_NEXT, "socketpair");
+  *(void **)(&real_getsockopt) = SET_DLSYM(RTLD_NEXT, "getsockopt");
+  *(void **)(&real_clone) = SET_DLSYM(RTLD_NEXT, "clone");
+  *(void **)(&real_fork) = SET_DLSYM(RTLD_NEXT, "fork");
+  *(void **)(&real_vfork) = SET_DLSYM(RTLD_NEXT, "vfork");
+  *(void **)(&real_execve) = SET_DLSYM(RTLD_NEXT, "execve");
+  *(void **)(&real_wait4) = SET_DLSYM(RTLD_NEXT, "wait4");
+  *(void **)(&real_kill) = SET_DLSYM(RTLD_NEXT, "kill");
+  *(void **)(&real_uname) = SET_DLSYM(RTLD_NEXT, "uname");
+  *(void **)(&real_semget) = SET_DLSYM(RTLD_NEXT, "semget");
+  *(void **)(&real_semop) = SET_DLSYM(RTLD_NEXT, "semop");
+  *(void **)(&real_semctl) = SET_DLSYM(RTLD_NEXT, "semctl");
+  *(void **)(&real_shmdt) = SET_DLSYM(RTLD_NEXT, "shmdt");
+  *(void **)(&real_msgget) = SET_DLSYM(RTLD_NEXT, "msgget");
+  *(void **)(&real_msgsnd) = SET_DLSYM(RTLD_NEXT, "msgsnd");
+  *(void **)(&real_msgrcv) = SET_DLSYM(RTLD_NEXT, "msgrcv");
+  *(void **)(&real_msgctl) = SET_DLSYM(RTLD_NEXT, "msgctl");
+  *(void **)(&real_fcntl) = SET_DLSYM(RTLD_NEXT, "fcntl");
+  *(void **)(&real_flock) = SET_DLSYM(RTLD_NEXT, "flock");
+  *(void **)(&real_fsync) = SET_DLSYM(RTLD_NEXT, "fsync");
+  *(void **)(&real_fdatasync) = SET_DLSYM(RTLD_NEXT, "fdatasync");
+  *(void **)(&real_truncate) = SET_DLSYM(RTLD_NEXT, "truncate");
+  *(void **)(&real_ftruncate) = SET_DLSYM(RTLD_NEXT, "ftruncate");
+  *(void **)(&real_getdents64) = SET_DLSYM(RTLD_NEXT, "getdents64");
+  *(void **)(&real_getcwd) = SET_DLSYM(RTLD_NEXT, "getcwd");
+  *(void **)(&real_chdir) = SET_DLSYM(RTLD_NEXT, "chdir");
+  *(void **)(&real_fchdir) = SET_DLSYM(RTLD_NEXT, "fchdir");
+  *(void **)(&real_rename) = SET_DLSYM(RTLD_NEXT, "rename");
+  *(void **)(&real_mkdir) = SET_DLSYM(RTLD_NEXT, "mkdir");
+  *(void **)(&real_rmdir) = SET_DLSYM(RTLD_NEXT, "rmdir");
+  *(void **)(&real_creat) = SET_DLSYM(RTLD_NEXT, "creat");
+  *(void **)(&real_link) = SET_DLSYM(RTLD_NEXT, "link");
+  *(void **)(&real_unlink) = SET_DLSYM(RTLD_NEXT, "unlink");
+  *(void **)(&real_symlink) = SET_DLSYM(RTLD_NEXT, "symlink");
+  *(void **)(&real_readlink) = SET_DLSYM(RTLD_NEXT, "readlink");
+  *(void **)(&real_chmod) = SET_DLSYM(RTLD_NEXT, "chmod");
+  *(void **)(&real_fchown) = SET_DLSYM(RTLD_NEXT, "fchown");
+  *(void **)(&real_chown) = SET_DLSYM(RTLD_NEXT, "chown");
+  *(void **)(&real_lchown) = SET_DLSYM(RTLD_NEXT, "lchown");
+  *(void **)(&real_umask) = SET_DLSYM(RTLD_NEXT, "umask");
+  *(void **)(&real_getcwd) = SET_DLSYM(RTLD_NEXT, "getcwd");
+  *(void **)(&real_gettimeofday) = SET_DLSYM(RTLD_NEXT, "gettimeofday");
+  *(void **)(&real_getrlimit) = SET_DLSYM(RTLD_NEXT, "getrlimit");
+  *(void **)(&real_getrusage) = SET_DLSYM(RTLD_NEXT, "getrusage");
+  *(void **)(&real_sysinfo) = SET_DLSYM(RTLD_NEXT, "sysinfo");
+  *(void **)(&real_times) = SET_DLSYM(RTLD_NEXT, "times");
+  *(void **)(&real_ptrace) = SET_DLSYM(RTLD_NEXT, "ptrace");
+  *(void **)(&real_getuid) = SET_DLSYM(RTLD_NEXT, "getuid");
+  *(void **)(&real_unlink) = SET_DLSYM(RTLD_NEXT, "unlink");
+  *(void **)(&real_syslog) = SET_DLSYM(RTLD_NEXT, "syslog");
+  *(void **)(&real_vsyslog) = SET_DLSYM(RTLD_NEXT, "vsyslog");
+  *(void **)(&real_getgid) = SET_DLSYM(RTLD_NEXT, "getgid");
+  *(void **)(&real_setuid) = SET_DLSYM(RTLD_NEXT, "setuid");
+  *(void **)(&real_setgid) = SET_DLSYM(RTLD_NEXT, "setgid");
+  *(void **)(&real_geteuid) = SET_DLSYM(RTLD_NEXT, "geteuid");
+  *(void **)(&real_getegid) = SET_DLSYM(RTLD_NEXT, "getegid");
+  *(void **)(&real_setpgid) = SET_DLSYM(RTLD_NEXT, "setpgid");
+  *(void **)(&real_getpgid) = SET_DLSYM(RTLD_NEXT, "getpgid");
+  *(void **)(&real_getpgrp) = SET_DLSYM(RTLD_NEXT, "getpgrp");
+  *(void **)(&real_setsid) = SET_DLSYM(RTLD_NEXT, "setsid");
+  *(void **)(&real_setreuid) = SET_DLSYM(RTLD_NEXT, "setreuid");
+  *(void **)(&real_setregid) = SET_DLSYM(RTLD_NEXT, "setregid");
+  *(void **)(&real_getgroups) = SET_DLSYM(RTLD_NEXT, "getgroups");
+  *(void **)(&real_setgroups) = SET_DLSYM(RTLD_NEXT, "setgroups");
+  *(void **)(&real_setresuid) = SET_DLSYM(RTLD_NEXT, "setresuid");
+  *(void **)(&real_getresuid) = SET_DLSYM(RTLD_NEXT, "getresuid");
+  *(void **)(&real_setresgid) = SET_DLSYM(RTLD_NEXT, "setresgid");
+  *(void **)(&real_getresgid) = SET_DLSYM(RTLD_NEXT, "getresgid");
+  *(void **)(&real_setfsuid) = SET_DLSYM(RTLD_NEXT, "setfsuid");
+  *(void **)(&real_setfsgid) = SET_DLSYM(RTLD_NEXT, "setfsgid");
+  *(void **)(&real_getsid) = SET_DLSYM(RTLD_NEXT, "getsid");
+  *(void **)(&real_sigaltstack) = SET_DLSYM(RTLD_NEXT, "sigaltstack");
+  *(void **)(&real_utime) = SET_DLSYM(RTLD_NEXT, "utime");
+  *(void **)(&real_mknod) = SET_DLSYM(RTLD_NEXT, "mknod");
+  *(void **)(&real_uselib) = SET_DLSYM(RTLD_NEXT, "uselib");
+  *(void **)(&real_personality) = SET_DLSYM(RTLD_NEXT, "personality");
+  *(void **)(&real_ustat) = SET_DLSYM(RTLD_NEXT, "ustat");
+  *(void **)(&real_statfs) = SET_DLSYM(RTLD_NEXT, "statfs");
+  *(void **)(&real_fstatfs) = SET_DLSYM(RTLD_NEXT, "fstatfs");
+  *(void **)(&real_sysfs) = SET_DLSYM(RTLD_NEXT, "sysfs");
+  *(void **)(&real_setpriority) = SET_DLSYM(RTLD_NEXT, "setpriority");
+  *(void **)(&real_sched_setparam) = SET_DLSYM(RTLD_NEXT, "sched_setparam");
+  *(void **)(&real_getpriority) = SET_DLSYM(RTLD_NEXT, "getpriority");
+  *(void **)(&real_sched_getparam) = SET_DLSYM(RTLD_NEXT, "sched_getparam");
+  *(void **)(&real_sched_setscheduler) = SET_DLSYM(RTLD_NEXT, "sched_setscheduler");
+  *(void **)(&real_sched_getscheduler) = SET_DLSYM(RTLD_NEXT, "sched_getscheduler");
+  *(void **)(&real_sched_get_priority_max) = SET_DLSYM(RTLD_NEXT, "sched_get_priority_max");
+  *(void **)(&real_sched_get_priority_min) = SET_DLSYM(RTLD_NEXT, "sched_get_priority_min");
+  *(void **)(&real_sched_rr_get_interval) = SET_DLSYM(RTLD_NEXT, "sched_rr_get_interval");
+  *(void **)(&real_mlock) = SET_DLSYM(RTLD_NEXT, "mlock");
+  *(void **)(&real_munlock) = SET_DLSYM(RTLD_NEXT, "munlock");
+  *(void **)(&real_mlockall) = SET_DLSYM(RTLD_NEXT, "mlockall");
+  *(void **)(&real_munlockall) = SET_DLSYM(RTLD_NEXT, "munlockall");
+  *(void **)(&real_vhangup) = SET_DLSYM(RTLD_NEXT, "vhangup");
+  *(void **)(&real__sysctl) = SET_DLSYM(RTLD_NEXT, "_sysctl");
+  *(void **)(&real_prctl) = SET_DLSYM(RTLD_NEXT, "prctl");
+  *(void **)(&real_adjtimex) = SET_DLSYM(RTLD_NEXT, "adjtimex");
+  *(void **)(&real_setrlimit) = SET_DLSYM(RTLD_NEXT, "setrlimit");
+  *(void **)(&real_chroot) = SET_DLSYM(RTLD_NEXT, "chroot");
+  *(void **)(&real_sync) = SET_DLSYM(RTLD_NEXT, "sync");
+  *(void **)(&real_acct) = SET_DLSYM(RTLD_NEXT, "acct");
+  *(void **)(&real_settimeofday) = SET_DLSYM(RTLD_NEXT, "settimeofday");
+  *(void **)(&real_mount) = SET_DLSYM(RTLD_NEXT, "mount");
+  *(void **)(&real_umount2) = SET_DLSYM(RTLD_NEXT, "umount2");
+  *(void **)(&real_swapon) = SET_DLSYM(RTLD_NEXT, "swapon");
+  *(void **)(&real_swapoff) = SET_DLSYM(RTLD_NEXT, "swapoff");
+  *(void **)(&real_reboot) = SET_DLSYM(RTLD_NEXT, "reboot");
+  *(void **)(&real_sethostname) = SET_DLSYM(RTLD_NEXT, "sethostname");
+  *(void **)(&real_setdomainname) = SET_DLSYM(RTLD_NEXT, "setdomainname");
+  *(void **)(&real_iopl) = SET_DLSYM(RTLD_NEXT, "iopl");
+  *(void **)(&real_ioperm) = SET_DLSYM(RTLD_NEXT, "ioperm");
+  *(void **)(&real_quotactl) = SET_DLSYM(RTLD_NEXT, "quotactl");
+  *(void **)(&real_gettid) = SET_DLSYM(RTLD_NEXT, "gettid");
+  *(void **)(&real_readahead) = SET_DLSYM(RTLD_NEXT, "readahead");
+  *(void **)(&real_setxattr) = SET_DLSYM(RTLD_NEXT, "setxattr");
+  *(void **)(&real_lsetxattr) = SET_DLSYM(RTLD_NEXT, "lsetxattr");
+  *(void **)(&real_fsetxattr) = SET_DLSYM(RTLD_NEXT, "fsetxattr");
+  *(void **)(&real_getxattr) = SET_DLSYM(RTLD_NEXT, "getxattr");
+  *(void **)(&real_lgetxattr) = SET_DLSYM(RTLD_NEXT, "lgetxattr");
+  *(void **)(&real_listxattr) = SET_DLSYM(RTLD_NEXT, "listxattr");
+  *(void **)(&real_fgetxattr) = SET_DLSYM(RTLD_NEXT, "fgetxattr");
+  *(void **)(&real_llistxattr) = SET_DLSYM(RTLD_NEXT, "llistxattr");
+  *(void **)(&real_flistxattr) = SET_DLSYM(RTLD_NEXT, "flistxattr");
+  *(void **)(&real_removexattr) = SET_DLSYM(RTLD_NEXT, "removexattr");
+  *(void **)(&real_lremovexattr) = SET_DLSYM(RTLD_NEXT, "lremovexattr");
+  *(void **)(&real_fremovexattr) = SET_DLSYM(RTLD_NEXT, "fremovexattr");
+  *(void **)(&real_time) = SET_DLSYM(RTLD_NEXT, "time");
+  *(void **)(&real_sched_setaffinity) = SET_DLSYM(RTLD_NEXT, "sched_setaffinity");
+  *(void **)(&real_sched_getaffinity) = SET_DLSYM(RTLD_NEXT, "sched_getaffinity");
+  *(void **)(&real_epoll_create) = SET_DLSYM(RTLD_NEXT, "epoll_create");
+  *(void **)(&real_remap_file_pages) = SET_DLSYM(RTLD_NEXT, "remap_file_pages");
+  *(void **)(&real_semtimedop) = SET_DLSYM(RTLD_NEXT, "semtimedop");
+  *(void **)(&real_posix_fadvise) = SET_DLSYM(RTLD_NEXT, "posix_fadvise");
+  *(void **)(&real_timer_create) = SET_DLSYM(RTLD_NEXT, "timer_create");
+  *(void **)(&real_timer_settime) = SET_DLSYM(RTLD_NEXT, "timer_settime");
+  *(void **)(&real_timer_gettime) = SET_DLSYM(RTLD_NEXT, "timer_gettime");
+  *(void **)(&real_timer_getoverrun) = SET_DLSYM(RTLD_NEXT, "timer_getoverrun");
+  *(void **)(&real_timer_delete) = SET_DLSYM(RTLD_NEXT, "timer_delete");
+  *(void **)(&real_clock_gettime) = SET_DLSYM(RTLD_NEXT, "clock_gettime");
+  *(void **)(&real_clock_settime) = SET_DLSYM(RTLD_NEXT, "clock_settime");
+  *(void **)(&real_clock_getres) = SET_DLSYM(RTLD_NEXT, "clock_getres");
+  *(void **)(&real_clock_nanosleep) = SET_DLSYM(RTLD_NEXT, "clock_nanosleep");
+  *(void **)(&real_epoll_wait) = SET_DLSYM(RTLD_NEXT, "epoll_wait");
+  *(void **)(&real_epoll_ctl) = SET_DLSYM(RTLD_NEXT, "epoll_ctl");
+  *(void **)(&real_tgkill) = SET_DLSYM(RTLD_NEXT, "tgkill");
+  *(void **)(&real_utimes) = SET_DLSYM(RTLD_NEXT, "utimes");
+  *(void **)(&real_set_mempolicy) = SET_DLSYM(RTLD_NEXT, "set_mempolicy");
+  *(void **)(&real_mq_open) = SET_DLSYM(RTLD_NEXT, "mq_open");
+  *(void **)(&real_mq_unlink) = SET_DLSYM(RTLD_NEXT, "mq_unlink");
+  *(void **)(&real_mq_timedsend) = SET_DLSYM(RTLD_NEXT, "mq_timedsend");
+  *(void **)(&real_mq_timedreceive) = SET_DLSYM(RTLD_NEXT, "mq_timedreceive");
+  *(void **)(&real_mq_notify) = SET_DLSYM(RTLD_NEXT, "mq_notify");
+  *(void **)(&real_waitid) = SET_DLSYM(RTLD_NEXT, "waitid");
+  *(void **)(&real_inotify_init) = SET_DLSYM(RTLD_NEXT, "inotify_init");
+  *(void **)(&real_inotify_add_watch) = SET_DLSYM(RTLD_NEXT, "inotify_add_watch");
+  *(void **)(&real_inotify_rm_watch) = SET_DLSYM(RTLD_NEXT, "inotify_rm_watch");
+  *(void **)(&real_openat) = SET_DLSYM(RTLD_NEXT, "openat");
+  *(void **)(&real_mkdirat) = SET_DLSYM(RTLD_NEXT, "mkdirat");
+  *(void **)(&real_mknodat) = SET_DLSYM(RTLD_NEXT, "mknodat");
+  *(void **)(&real_fchownat) = SET_DLSYM(RTLD_NEXT, "fchownat");
+  *(void **)(&real_futimesat) = SET_DLSYM(RTLD_NEXT, "futimesat");
+  *(void **)(&real_fstatat) = SET_DLSYM(RTLD_NEXT, "fstatat");
+  *(void **)(&real_unlinkat) = SET_DLSYM(RTLD_NEXT, "unlinkat");
+  *(void **)(&real_renameat) = SET_DLSYM(RTLD_NEXT, "renameat");
+  *(void **)(&real_linkat) = SET_DLSYM(RTLD_NEXT, "linkat");
+  *(void **)(&real_symlinkat) = SET_DLSYM(RTLD_NEXT, "symlinkat");
+  *(void **)(&real_readlinkat) = SET_DLSYM(RTLD_NEXT, "readlinkat");
+  *(void **)(&real_fchmodat) = SET_DLSYM(RTLD_NEXT, "fchmodat");
+  *(void **)(&real_faccessat) = SET_DLSYM(RTLD_NEXT, "faccessat");
+  *(void **)(&real_pselect) = SET_DLSYM(RTLD_NEXT, "pselect");
+  *(void **)(&real_ppoll) = SET_DLSYM(RTLD_NEXT, "ppoll");
+  *(void **)(&real_unshare) = SET_DLSYM(RTLD_NEXT, "unshare");
+  *(void **)(&real_splice) = SET_DLSYM(RTLD_NEXT, "splice");
+  *(void **)(&real_tee) = SET_DLSYM(RTLD_NEXT, "tee");
+  *(void **)(&real_sync_file_range) = SET_DLSYM(RTLD_NEXT, "sync_file_range");
+  *(void **)(&real_vmsplice) = SET_DLSYM(RTLD_NEXT, "vmsplice");
+  *(void **)(&real_utimensat) = SET_DLSYM(RTLD_NEXT, "utimensat");
+  *(void **)(&real_epoll_pwait) = SET_DLSYM(RTLD_NEXT, "epoll_pwait");
+  *(void **)(&real_signalfd) = SET_DLSYM(RTLD_NEXT, "signalfd");
+  *(void **)(&real_timerfd_create) = SET_DLSYM(RTLD_NEXT, "timerfd_create");
+  *(void **)(&real_eventfd) = SET_DLSYM(RTLD_NEXT, "eventfd");
+  *(void **)(&real_fallocate) = SET_DLSYM(RTLD_NEXT, "fallocate");
+  *(void **)(&real_timerfd_settime) = SET_DLSYM(RTLD_NEXT, "timerfd_settime");
+  *(void **)(&real_timerfd_gettime) = SET_DLSYM(RTLD_NEXT, "timerfd_gettime");
+  *(void **)(&real_accept4) = SET_DLSYM(RTLD_NEXT, "accept4");
+  *(void **)(&real_epoll_create1) = SET_DLSYM(RTLD_NEXT, "epoll_create1");
+  *(void **)(&real_dup3) = SET_DLSYM(RTLD_NEXT, "dup3");
+  *(void **)(&real_pipe2) = SET_DLSYM(RTLD_NEXT, "pipe2");
+  *(void **)(&real_inotify_init1) = SET_DLSYM(RTLD_NEXT, "inotify_init1");
+  *(void **)(&real_preadv) = SET_DLSYM(RTLD_NEXT, "preadv");
+  *(void **)(&real_pwritev) = SET_DLSYM(RTLD_NEXT, "pwritev");
+  *(void **)(&real_recvmmsg) = SET_DLSYM(RTLD_NEXT, "pwritev");
+  *(void **)(&real_fanotify_init) = SET_DLSYM(RTLD_NEXT, "fanotify_init");
+  *(void **)(&real_fanotify_mark) = SET_DLSYM(RTLD_NEXT, "fanotify_mark");
+  *(void **)(&real_prlimit) = SET_DLSYM(RTLD_NEXT, "prlimit");
+  *(void **)(&real_name_to_handle_at) = SET_DLSYM(RTLD_NEXT, "name_to_handle_at");
+  *(void **)(&real_open_by_handle_at) = SET_DLSYM(RTLD_NEXT, "open_by_handle_at");
+  *(void **)(&real_clock_adjtime) = SET_DLSYM(RTLD_NEXT, "clock_adjtime");
+  *(void **)(&real_syncfs) = SET_DLSYM(RTLD_NEXT, "syncfs");
+  *(void **)(&real_sendmmsg) = SET_DLSYM(RTLD_NEXT, "sendmmsg");
+  *(void **)(&real_setns) = SET_DLSYM(RTLD_NEXT, "setns");
+  *(void **)(&real_getcpu) = SET_DLSYM(RTLD_NEXT, "getcpu");
+  *(void **)(&real_process_vm_readv) = SET_DLSYM(RTLD_NEXT, "process_vm_readv");
+  *(void **)(&real_process_vm_writev) = SET_DLSYM(RTLD_NEXT, "process_vm_writev");
+  *(void **)(&real_renameat2) = SET_DLSYM(RTLD_NEXT, "renameat2");
+  *(void **)(&real_getrandom) = SET_DLSYM(RTLD_NEXT, "getrandom");
+  *(void **)(&real_memfd_create) = SET_DLSYM(RTLD_NEXT, "memfd_create");
+  *(void **)(&real_bpf) = SET_DLSYM(RTLD_NEXT, "bpf");
+  *(void **)(&real_execveat) = SET_DLSYM(RTLD_NEXT, "execveat");
+  *(void **)(&real_mlock2) = SET_DLSYM(RTLD_NEXT, "mlock2");
+  *(void **)(&real_copy_file_range) = SET_DLSYM(RTLD_NEXT, "copy_file_range");
+  *(void **)(&real_preadv2) = SET_DLSYM(RTLD_NEXT, "preadv2");
+  *(void **)(&real_pwritev2) = SET_DLSYM(RTLD_NEXT, "pwritev2");
+  *(void **)(&real_pkey_mprotect) = SET_DLSYM(RTLD_NEXT, "pkey_mprotect");
+  *(void **)(&real_pkey_alloc) = SET_DLSYM(RTLD_NEXT, "pkey_alloc");
+  *(void **)(&real_pkey_free) = SET_DLSYM(RTLD_NEXT, "pkey_free");
+  *(void **)(&real_statx) = SET_DLSYM(RTLD_NEXT, "statx");
+}
 
 int puts(const char *str) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_puts);
+  CHECK_DLSYM(real_puts);
   return real_puts(str);
 }
 
@@ -726,19 +733,19 @@ long syscall(long number, ...) {
 // https://chromium.googlesource.com/chromiumos/docs/+/master/constants/syscalls.md
 ssize_t read(int fd, void *buf, size_t nbytes) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_read);
+  CHECK_DLSYM(real_read);
   return real_read(fd, buf, nbytes);
 }
 
 ssize_t write(int fd, const void *buf, size_t nbytes) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_write);
+  CHECK_DLSYM(real_write);
   return real_write(fd, buf, nbytes);
 }
 
 int open(const char *path, int oflag, ...) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_open);
+  CHECK_DLSYM(real_open);
 
   va_list ap;
   mode_t mode;
@@ -754,103 +761,103 @@ CHECK_DLSYM(real_open);
 
 int close(int fd) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_close);
+  CHECK_DLSYM(real_close);
   return real_close(fd);
 }
 
 int stat(const char *pathname, struct stat *statbuf) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_stat);
+  CHECK_DLSYM(real_stat);
   return real_stat(pathname, statbuf);
 }
 
 int fstat(int fd, struct stat *statbuf) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_fstat);
+  CHECK_DLSYM(real_fstat);
   return real_fstat(fd, statbuf);
 }
 
 int lstat(const char *pathname, struct stat *statbuf) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_lstat);
+  CHECK_DLSYM(real_lstat);
   return real_lstat(pathname, statbuf);
 }
 
 int poll(struct pollfd *fds, nfds_t nfds, int timeout) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_poll);
+  CHECK_DLSYM(real_poll);
   return real_poll(fds, nfds, timeout);
 }
 
 off_t lseek(int fd, off_t offset, int whence) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_lseek);
+  CHECK_DLSYM(real_lseek);
   return real_lseek(fd, offset, whence);
 }
 
 void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_mmap);
+  CHECK_DLSYM(real_mmap);
   return real_mmap(addr, length, prot, flags, fd, offset);
 }
 
 int mprotect(void *addr, size_t len, int prot) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_mprotect);
+  CHECK_DLSYM(real_mprotect);
   return real_mprotect(addr, len, prot);
 }
 
 int munmap(void *addr, size_t length) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_munmap);
+  CHECK_DLSYM(real_munmap);
   return real_munmap(addr, length);
 }
 
 int brk(void *addr) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_brk);
+  CHECK_DLSYM(real_brk);
   return real_brk(addr);
 }
 
 void *sbrk(intptr_t increment) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_sbrk);
+  CHECK_DLSYM(real_sbrk);
   return real_sbrk(increment);
 }
 
 int ioctl(int fd, unsigned long request, void *data) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_ioctl);
+  CHECK_DLSYM(real_ioctl);
   return real_ioctl(fd, request, data);
 }
 
 ssize_t pread(int fd, void *buf, size_t count, off_t offset) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_pread);
+  CHECK_DLSYM(real_pread);
   return real_pread(fd, buf, count, offset);
 }
 
 ssize_t pwrite(int fd, const void *buf, size_t count, off_t offset) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_pwrite);
+  CHECK_DLSYM(real_pwrite);
   return real_pwrite(fd, buf, count, offset);
 }
 
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_readv);
+  CHECK_DLSYM(real_readv);
   return real_readv(fd, iov, iovcnt);
 }
 
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_writev);
+  CHECK_DLSYM(real_writev);
   return real_writev(fd, iov, iovcnt);
 }
 
 int access(const char *pathname, int mode) {
   DEBUG_MSG(5, __func__);
-CHECK_DLSYM(real_access);
+  CHECK_DLSYM(real_access);
   return real_access(pathname, mode);
 }
 /*

@@ -11,7 +11,7 @@ set(CMAKE_CXX_FLAGS ${ADDITIONAL_CMAKE_CXX_FLAGS} " -fpermissive -fPIC")
 
 target_link_libraries(${PROJECT_NAME}
 	PRIVATE
-	dl
+	dl pthread
 )
 
 target_include_directories(${PROJECT_NAME}
