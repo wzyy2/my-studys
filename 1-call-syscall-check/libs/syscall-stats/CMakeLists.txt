@@ -3,15 +3,16 @@ project(syscall-stats)
 add_library(${PROJECT_NAME} SHARED
 	syscall-stats.cpp
 	syscall-stubs.cpp
+	syscall-init.cpp
 )
 
 add_library(libs::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
-set(CMAKE_CXX_FLAGS ${ADDITIONAL_CMAKE_CXX_FLAGS} " -fpermissive -fPIC")
+set(CMAKE_CXX_FLAGS ${ADDITIONAL_CMAKE_CXX_FLAGS} " -fpermissive -fPIC -Wl,--no-as-needed")
 
 target_link_libraries(${PROJECT_NAME}
-	PRIVATE
-	dl pthread
+	PUBLIC
+	dl pthread rt
 )
 
 target_include_directories(${PROJECT_NAME}

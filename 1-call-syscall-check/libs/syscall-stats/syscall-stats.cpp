@@ -1,23 +1,31 @@
 #include "syscall-stats.h"
 
-#include <dlfcn.h>
+thread_local StatsThreadLocal StatsThreadLocal::instance_;
 
-#include <cstdlib>
-#include <iostream>
-#include <thread>
+StatsThreadLocal::StatsThreadLocal() {
+  enabled_ = DEBUG_THREAD_DEFAULT_ENABLE;
+  memset(stats_, 0, SysCallIndex::MAX_NUM);
+}
 
-// 开关参数，测试用
-#define DEBUG_THREAD_ON
+StatsThreadLocal::~StatsThreadLocal() {
+#ifdef DEBUG_PRINT_WHEN_EXIT
+  PrintStats();
+#endif
+}
 
-class StatsProcess {};
+void StatsThreadLocal::SetEnable() {
+  enabled_ = true;
+  memset(stats_, 0, SysCallIndex::MAX_NUM);
+}
 
-thread_local StatsThread StatsThread::instance_;
+void StatsThreadLocal::SetDisable() {
+  enabled_ = false;
+  memset(stats_, 0, SysCallIndex::MAX_NUM);
+}
 
-StatsThread::StatsThread() {}
-
-struct initializer {
-  initializer() {}
-
-  ~initializer() {}
-};
-static initializer i;
+void StatsThreadLocal::PrintStats() {
+  for (int n = 0; n < SysCallIndex::MAX_NUM; n++) {
+    if (stats_[n] == 0) continue;
+    std::cout << "syscall-name: " << SysCallIndex::name(n) << "  count: " << stats_[n] << std::endl;
+  }
+}

@@ -1,7 +1,17 @@
 #ifndef SYSCALL_HEADER
 #define SYSCALL_HEADER
 
-#define DEBUG_LEVEL 0
+#include <dlfcn.h>
+#include <stdio.h>
+#include <string.h>
+
+#include <cstdlib>
+#include <iostream>
+#include <thread>
+
+#define DEBUG_THREAD_DEFAULT_ENABLE true
+#define DEBUG_PRINT_WHEN_EXIT true
+#define DEBUG_LEVEL 2
 
 #define DEBUG_MSG(level, str)      \
   if (level <= DEBUG_LEVEL) {      \
@@ -9,6 +19,7 @@
   }
 
 void native_init_syscalls();
+const char *syscall_enum_to_name(int index);
 
 // index
 namespace SysCallIndex {
@@ -159,7 +170,7 @@ enum {
   real_mlockall,
   real_munlockall,
   real_vhangup,
-  real__sysctl,
+  real_sysctl,
   real_prctl,
   real_adjtimex,
   real_setrlimit,
@@ -207,6 +218,7 @@ enum {
   real_clock_settime,
   real_clock_getres,
   real_clock_nanosleep,
+  real_epoll_wait,
   real_epoll_ctl,
   real_tgkill,
   real_utimes,
@@ -283,6 +295,8 @@ enum {
   real_statx,
   MAX_NUM,
 };
+
+const char *name(int index);
 
 }
 
