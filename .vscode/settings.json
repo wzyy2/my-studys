@@ -55,7 +55,16 @@
         "map": "cpp",
         "iomanip": "cpp",
         "condition_variable": "cpp",
-        "mutex": "cpp"
+        "mutex": "cpp",
+        "cassert": "cpp",
+        "cerrno": "cpp",
+        "ciso646": "cpp",
+        "climits": "cpp",
+        "unordered_set": "cpp",
+        "ios": "cpp",
+        "locale": "cpp",
+        "queue": "cpp",
+        "stack": "cpp"
     },
     "cpplint.verbose": 0,
     "C_Cpp.dimInactiveRegions": true
