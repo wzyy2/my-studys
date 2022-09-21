@@ -24,6 +24,7 @@ class StatsThreadLocal {
 
   bool enabled_;
   uint64_t stats_[SysCallIndex::MAX_NUM];
+  pthread_t   tid_;
 };
 
 #endif

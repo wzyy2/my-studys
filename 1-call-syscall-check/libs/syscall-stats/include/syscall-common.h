@@ -6,8 +6,10 @@
 #include <string.h>
 
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <thread>
+#include <vector>
 
 #define DEBUG_THREAD_DEFAULT_ENABLE true
 #define DEBUG_PRINT_WHEN_EXIT true
@@ -25,7 +27,30 @@ const char *syscall_enum_to_name(int index);
 namespace SysCallIndex {
 enum {
   real_syscall = 0,
+  real_malloc,
+  real_free,
   real_puts,
+  real_gets,
+  real_pthread_create,
+  real_pthread_join,
+  real_pthread_detach,
+  real_pthread_exit,
+  real_pthread_cancel,
+  real_fopen,
+  real_fopen64,
+  real_fclose,
+  real_fwrite,
+  real_fread,
+  real_fputs,
+  real_fgets,
+  real_fflush,
+  real_fseek,
+  real_fprintf,
+  real_fscanf,
+  real_fputchar,
+  real_fgetchar,
+  real_fgetc,
+  real_fputc,
   real_read,
   real_write,
   real_open,
@@ -298,6 +323,6 @@ enum {
 
 const char *name(int index);
 
-}
+}  // namespace SysCallIndex
 
 #endif

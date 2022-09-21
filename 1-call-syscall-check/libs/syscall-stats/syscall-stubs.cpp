@@ -11,6 +11,7 @@
 #include <mqueue.h>
 #include <numaif.h>
 #include <poll.h>
+#include <pthread.h>
 #include <sched.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -54,9 +55,33 @@
 
 /* not syscall */
 long (*real_syscall)(long number, ...);
+void *(*real_malloc)(size_t size);
+void (*real_free)(void *ptr);
 int (*real_puts)(const char *str);
+char *(*real_gets)(char *str);
 
 /* posix */
+int (*real_pthread_create)(pthread_t *t, const pthread_attr_t *attr, void *(*start_routine)(void *),
+                           void *arg);
+int (*real_pthread_join)(pthread_t t, void **retval);
+int (*real_pthread_detach)(pthread_t t);
+void (*real_pthread_exit)(void *r);
+int (*real_pthread_cancel)(pthread_t t);
+FILE *(*real_fopen64)(const char *filename, const char *mode);
+FILE *(*real_fopen)(const char *filename, const char *mode);
+int (*real_fclose)(FILE *fp);
+size_t (*real_fread)(void *ptr, size_t size, size_t nmemb, FILE *stream);
+size_t (*real_fwrite)(const void *ptr, size_t size, size_t nmemb, FILE *stream);
+int (*real_fputs)(const char *string, FILE *fp);
+char *(*real_fgets)(char *string, int n, FILE *fp);
+int (*real_fflush)(FILE *fp);
+int (*real_fseek)(FILE *fp, long int offset, int whence);
+int (*real_fputchar)(int c);
+int (*real_fgetchar)(void);
+int (*real_fscanf)(FILE *fp, const char *format, ...);
+int (*real_fprintf)(FILE *fp, const char *format, ...);
+int (*real_fputc)(int c, FILE *fp);
+int (*real_fgetc)(FILE *fp);
 
 /* syscall, by order */
 // https://chromium.googlesource.com/chromiumos/docs/+/master/constants/syscalls.md
@@ -441,8 +466,31 @@ static inline void *SET_DLSYM(void *handle, const char *name) {
 void native_init_syscalls() {
   std::lock_guard<std::mutex> lock_init(mtx);
 
+  *(void **)(&real_malloc) = SET_DLSYM(RTLD_NEXT, "malloc");
+  *(void **)(&real_free) = SET_DLSYM(RTLD_NEXT, "free");
   *(void **)(&real_puts) = SET_DLSYM(RTLD_NEXT, "puts");
+  *(void **)(&real_gets) = SET_DLSYM(RTLD_NEXT, "gets");
   *(void **)(&real_syscall) = SET_DLSYM(RTLD_NEXT, "syscall");
+  *(void **)(&real_pthread_create) = SET_DLSYM(RTLD_NEXT, "pthread_create");
+  *(void **)(&real_pthread_join) = SET_DLSYM(RTLD_NEXT, "pthread_join");
+  *(void **)(&real_pthread_detach) = SET_DLSYM(RTLD_NEXT, "pthread_detach");
+  *(void **)(&real_pthread_exit) = SET_DLSYM(RTLD_NEXT, "pthread_exit");
+  *(void **)(&real_pthread_cancel) = SET_DLSYM(RTLD_NEXT, "pthread_cancel");
+  *(void **)(&real_fopen) = SET_DLSYM(RTLD_NEXT, "fopen");
+  *(void **)(&real_fopen64) = SET_DLSYM(RTLD_NEXT, "fopen64");
+  *(void **)(&real_fclose) = SET_DLSYM(RTLD_NEXT, "fclose");
+  *(void **)(&real_fread) = SET_DLSYM(RTLD_NEXT, "fread");
+  *(void **)(&real_fwrite) = SET_DLSYM(RTLD_NEXT, "fwrite");
+  *(void **)(&real_fputs) = SET_DLSYM(RTLD_NEXT, "fputs");
+  *(void **)(&real_fgets) = SET_DLSYM(RTLD_NEXT, "fgets");
+  *(void **)(&real_fflush) = SET_DLSYM(RTLD_NEXT, "fflush");
+  *(void **)(&real_fseek) = SET_DLSYM(RTLD_NEXT, "fseek");
+  *(void **)(&real_fprintf) = SET_DLSYM(RTLD_NEXT, "fprintf");
+  *(void **)(&real_fscanf) = SET_DLSYM(RTLD_NEXT, "fscanf");
+  // *(void **)(&real_fputchar) = SET_DLSYM(RTLD_NEXT, "fputchar");
+  // *(void **)(&real_fgetchar) = SET_DLSYM(RTLD_NEXT, "fgetchar");
+  *(void **)(&real_fgetc) = SET_DLSYM(RTLD_NEXT, "fgetc");
+  *(void **)(&real_fputc) = SET_DLSYM(RTLD_NEXT, "fputc");
 
   *(void **)(&real_read) = SET_DLSYM(RTLD_NEXT, "read");
   *(void **)(&real_write) = SET_DLSYM(RTLD_NEXT, "write");
@@ -718,9 +766,25 @@ void native_init_syscalls() {
   *(void **)(&real_statx) = SET_DLSYM(RTLD_NEXT, "statx");
 }
 
+// others
+void *malloc(size_t size) {
+  CHECK_DLSYM(real_malloc);
+  return real_malloc(size);
+}
+
+void free(void *ptr) {
+  CHECK_DLSYM(real_free);
+  real_free(ptr);
+}
+
 int puts(const char *str) {
   CHECK_DLSYM(real_puts);
   return real_puts(str);
+}
+
+char *gets(char *str) {
+  CHECK_DLSYM(real_gets);
+  return real_gets(str);
 }
 
 long syscall(long number, ...) {
@@ -738,6 +802,122 @@ long syscall(long number, ...) {
   va_end(ap);
 
   return real_syscall(number, a1, a2, a3, a4, a5, a6);
+}
+
+// posix
+int pthread_create(pthread_t *t, const pthread_attr_t *attr, void *(*start_routine)(void *),
+                   void *arg) {
+  CHECK_DLSYM(real_pthread_create);
+  return real_pthread_create(t, attr, start_routine, arg);
+}
+
+int pthread_join(pthread_t t, void **retval) {
+  CHECK_DLSYM(real_pthread_join);
+  return real_pthread_join(t, retval);
+}
+
+int pthread_detach(pthread_t t) {
+  CHECK_DLSYM(real_pthread_detach);
+  return real_pthread_detach(t);
+}
+
+void pthread_exit(void * r) {
+  CHECK_DLSYM(real_pthread_exit);
+  real_pthread_exit(r);
+}
+
+int pthread_cancel(pthread_t t) {
+  CHECK_DLSYM(real_pthread_cancel);
+  return real_pthread_cancel(t);
+}
+
+FILE *fopen(const char *filename, const char *mode) {
+  CHECK_DLSYM(real_fopen);
+  return real_fopen(filename, mode);
+}
+
+FILE *fopen64(const char *filename, const char *mode) {
+  CHECK_DLSYM(real_fopen64);
+  return real_fopen64(filename, mode);
+}
+
+int fclose(FILE *fp) {
+  CHECK_DLSYM(real_fclose);
+  return real_fclose(fp);
+}
+
+size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
+  CHECK_DLSYM(real_fread);
+  return real_fread(ptr, size, nmemb, stream);
+}
+
+size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
+  CHECK_DLSYM(real_fwrite);
+  return real_fwrite(ptr, size, nmemb, stream);
+}
+
+int fputs(const char *string, FILE *fp) {
+  CHECK_DLSYM(real_fputs);
+  return real_fputs(string, fp);
+}
+
+char *fgets(char *string, int n, FILE *fp) {
+  CHECK_DLSYM(real_fgets);
+  return real_fgets(string, n, fp);
+}
+
+int fflush(FILE *fp) {
+  CHECK_DLSYM(real_fflush);
+  return real_fflush(fp);
+}
+
+int fseek(FILE *fp, long int offset, int whence) {
+  CHECK_DLSYM(real_fseek);
+  return real_fseek(fp, offset, whence);
+}
+
+// int fputchar(int c) {
+//   CHECK_DLSYM(real_fputchar);
+//   return real_fputchar(c);
+// }
+
+// int fgetchar(void) {
+//   CHECK_DLSYM(real_fgetchar);
+//   return real_fgetchar();
+// }
+
+int fscanf(FILE *fp, const char *format, ...) {
+  CHECK_DLSYM(real_fscanf);
+  va_list arg;
+  int done;
+
+  va_start(arg, format);
+  done = vfscanf(fp, format, arg);
+  va_end(arg);
+
+  return done;
+}
+
+int fprintf(FILE *fp, const char *format, ...) {
+  CHECK_DLSYM(real_fprintf);
+  va_list arg;
+  int done;
+
+  va_start(arg, format);
+  done = vfprintf(fp, format, arg);
+  va_end(arg);
+
+  return done;
+}
+
+int fputc(int c, FILE *fp) {
+  CHECK_DLSYM(real_fputc);
+  return real_fputc(c, fp);
+}
+
+int fgetc(FILE *fp) {
+  CHECK_DLSYM(real_fgetc);
+  return real_fgetc(fp);
 }
 
 // syscall, by order,
@@ -1438,18 +1618,18 @@ int fstatfs(int fd, struct statfs *buf) {
   return real_fstatfs(fd, buf);
 }
 
-int sysfs(int option, const char *fsname) {
-  CHECK_DLSYM(real_sysfs);
-  return real_sysfs(option, fsname);
-}
-int sysfs(int option, unsigned int fs_index, char *buf) {
-  CHECK_DLSYM(real_sysfs);
-  return real_sysfs(option, fs_index, buf);
-}
-int sysfs(int option) {
-  CHECK_DLSYM(real_sysfs);
-  return real_sysfs(option);
-}
+// int sysfs(int option, const char *fsname) {
+//   CHECK_DLSYM(real_sysfs);
+//   return real_sysfs(option, fsname);
+// }
+// int sysfs(int option, unsigned int fs_index, char *buf) {
+//   CHECK_DLSYM(real_sysfs);
+//   return real_sysfs(option, fs_index, buf);
+// }
+// int sysfs(int option) {
+//   CHECK_DLSYM(real_sysfs);
+//   return real_sysfs(option);
+// }
 
 int getpriority(int which, id_t who) {
   CHECK_DLSYM(real_getpriority);
@@ -1789,10 +1969,10 @@ int utimes(const char *filename, const struct timeval times[2]) {
 
 // vserver
 // mbind
-long set_mempolicy(int mode, const unsigned long *nodemask, unsigned long maxnode) {
-  CHECK_DLSYM(real_set_mempolicy);
-  return real_set_mempolicy(mode, nodemask, maxnode);
-}
+// long set_mempolicy(int mode, const unsigned long *nodemask, unsigned long maxnode) {
+//   CHECK_DLSYM(real_set_mempolicy);
+//   return real_set_mempolicy(mode, nodemask, maxnode);
+// }
 
 mqd_t mq_open(const char *name, int oflag, ...) {
   CHECK_DLSYM(real_mq_open);
@@ -2134,16 +2314,16 @@ int memfd_create(const char *name, unsigned int flags) {
   return real_memfd_create(name, flags);
 }
 
-int bpf(int cmd, union bpf_attr *attr, unsigned int size) {
-  CHECK_DLSYM(real_bpf);
-  return real_bpf(cmd, attr, size);
-}
+// int bpf(int cmd, union bpf_attr *attr, unsigned int size) {
+//   CHECK_DLSYM(real_bpf);
+//   return real_bpf(cmd, attr, size);
+// }
 
-int execveat(int dirfd, const char *pathname, const char *const argv[], const char *const envp[],
-             int flags) {
-  CHECK_DLSYM(real_execveat);
-  return real_execveat(dirfd, pathname, argv, envp, flags);
-}
+// int execveat(int dirfd, const char *pathname, const char *const argv[], const char *const envp[],
+//              int flags) {
+//   CHECK_DLSYM(real_execveat);
+//   return real_execveat(dirfd, pathname, argv, envp, flags);
+// }
 
 int mlock2(const void *addr, size_t len, unsigned int flags) {
   CHECK_DLSYM(real_mlock2);

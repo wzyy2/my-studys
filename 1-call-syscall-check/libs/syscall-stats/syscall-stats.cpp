@@ -3,8 +3,12 @@
 thread_local StatsThreadLocal StatsThreadLocal::instance_;
 
 StatsThreadLocal::StatsThreadLocal() {
-  enabled_ = DEBUG_THREAD_DEFAULT_ENABLE;
+  enabled_ = false;
   memset(stats_, 0, SysCallIndex::MAX_NUM);
+
+  if (DEBUG_THREAD_DEFAULT_ENABLE) {
+    SetEnable();
+  }
 }
 
 StatsThreadLocal::~StatsThreadLocal() {
@@ -16,6 +20,7 @@ StatsThreadLocal::~StatsThreadLocal() {
 void StatsThreadLocal::SetEnable() {
   enabled_ = true;
   memset(stats_, 0, SysCallIndex::MAX_NUM);
+  tid_ = pthread_self();
 }
 
 void StatsThreadLocal::SetDisable() {
@@ -26,6 +31,7 @@ void StatsThreadLocal::SetDisable() {
 void StatsThreadLocal::PrintStats() {
   for (int n = 0; n < SysCallIndex::MAX_NUM; n++) {
     if (stats_[n] == 0) continue;
-    std::cout << "syscall-name: " << SysCallIndex::name(n) << "  count: " << stats_[n] << std::endl;
+    std::cout << "tid: " << tid_ << " syscall-name: " << SysCallIndex::name(n)
+              << "  count: " << stats_[n] << std::endl;
   }
 }

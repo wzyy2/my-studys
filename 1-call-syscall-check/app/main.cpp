@@ -56,10 +56,50 @@
 #include <unistd.h>
 #include <iostream>
 
+#include "syscall-stats.h"
+
+void thread_func() { std::this_thread::sleep_for(std::chrono::milliseconds(100)); }
+
 int main() {
+  std::cout << "\ntest log" << std::endl;
+  StatsThreadLocal::getInstance().SetEnable();
   std::cout << "Hello<cout>" << std::endl;
   printf("Hello<printf>\n");
   write(0, "Hello<write>\n", 15);
+  StatsThreadLocal::getInstance().PrintStats();
+  StatsThreadLocal::getInstance().SetDisable();
+
+  std::cout << "\ntest file" << std::endl;
+  StatsThreadLocal::getInstance().SetEnable();
+  std::ofstream myfile;
+  myfile.open("/tmp/example.txt");
+  myfile << "Writing this to a file.\n";
+  myfile.close();
+
+  FILE* demo;
+  demo = fopen("/tmp/demo_file.txt", "w+");
+  fprintf(demo, "%s %s %s", "Welcome", "to", "GeeksforGeeks");
+  fclose(demo);
+  StatsThreadLocal::getInstance().PrintStats();
+  StatsThreadLocal::getInstance().SetDisable();
+
+  std::cout << "\ntest thread" << std::endl;
+  StatsThreadLocal::getInstance().SetEnable();
+  std::thread threadA = std::thread(thread_func);
+  threadA.join();
+  StatsThreadLocal::getInstance().PrintStats();
+  StatsThreadLocal::getInstance().SetDisable();
+
+  std::cout << "\ntest malloc" << std::endl;
+  StatsThreadLocal::getInstance().SetEnable();
+  auto testA = new std::vector<int>(32);
+  auto testB = malloc(64);
+  free(testB);
+  delete testA;
+  StatsThreadLocal::getInstance().PrintStats();
+  StatsThreadLocal::getInstance().SetDisable();
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   return 0;
 }
