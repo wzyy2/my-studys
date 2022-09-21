@@ -14,6 +14,7 @@ class StatsThreadLocal {
   void inline DoStats(int index) { stats_[index] += 1; }
 
   void PrintStats();
+  uint64_t *GetStats();
   void SetEnable();
   void SetDisable();
 

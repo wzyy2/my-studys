@@ -35,3 +35,4 @@ void StatsThreadLocal::PrintStats() {
               << "  count: " << stats_[n] << std::endl;
   }
 }
+uint64_t* StatsThreadLocal::GetStats() { return stats_; }
