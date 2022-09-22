@@ -26,7 +26,6 @@ class rt_string : public static_strings<N> {
   rt_string() : static_strings<N>() {}
 
   void *operator new(size_t sz) {
-    std::cout << "dsadads" << std::endl;
     void *a = pool.allocate(sz);
     return a;
   }
