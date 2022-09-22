@@ -546,8 +546,7 @@ void native_init_syscalls() {
   *(void **)(&real_getsockname) = SET_DLSYM(RTLD_NEXT, "getsockname");
   *(void **)(&real_getpeername) = SET_DLSYM(RTLD_NEXT, "getpeername");
   *(void **)(&real_socketpair) = SET_DLSYM(RTLD_NEXT, "socketpair");
-  *(void **)(&real_socketpair) = SET_DLSYM(RTLD_NEXT, "socketpair");
-  *(void **)(&real_setsockopt) = SET_DLSYM(RTLD_NEXT, "socketpair");
+  *(void **)(&real_setsockopt) = SET_DLSYM(RTLD_NEXT, "setsockopt");
   *(void **)(&real_getsockopt) = SET_DLSYM(RTLD_NEXT, "getsockopt");
   *(void **)(&real_clone) = SET_DLSYM(RTLD_NEXT, "clone");
   *(void **)(&real_fork) = SET_DLSYM(RTLD_NEXT, "fork");
@@ -2189,6 +2188,7 @@ int timerfd_gettime(int fd, struct itimerspec *curr_value) {
   return real_timerfd_gettime(fd, curr_value);
 }
 
+
 int accept4(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags) {
   CHECK_DLSYM(real_accept4);
   return real_accept4(sockfd, addr, addrlen, flags);
@@ -2365,3 +2365,5 @@ int statx(int dirfd, const char *pathname, int flags, unsigned int mask, struct 
   CHECK_DLSYM(real_statx);
   return real_statx(dirfd, pathname, flags, mask, statxbuf);
 }
+/*
+*/

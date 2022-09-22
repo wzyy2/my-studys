@@ -64,7 +64,8 @@
         "ios": "cpp",
         "locale": "cpp",
         "queue": "cpp",
-        "stack": "cpp"
+        "stack": "cpp",
+        "*.ipp": "cpp"
     },
     "cpplint.verbose": 0,
     "C_Cpp.dimInactiveRegions": true
