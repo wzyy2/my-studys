@@ -44,6 +44,8 @@ noexcept
   currentSlot_ = nullptr;
   lastSlot_ = nullptr;
   freeSlots_ = nullptr;
+
+  allocateBlock();
 }
 
 
@@ -144,8 +146,6 @@ MemoryPool<T, BlockSize>::allocateBlock()
   lastSlot_ = reinterpret_cast<slot_pointer_>
               (newBlock + BlockSize - sizeof(slot_type_) + 1);
 }
-
-
 
 template <typename T, size_t BlockSize>
 inline typename MemoryPool<T, BlockSize>::pointer

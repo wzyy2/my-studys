@@ -16,5 +16,5 @@ add_executable(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
 	PRIVATE
-	syscall-stats  z ssl uv uWS
+	syscall-stats  adlab-realtime z ssl uv uWS 
 )

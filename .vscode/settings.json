@@ -65,7 +65,10 @@
         "locale": "cpp",
         "queue": "cpp",
         "stack": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "bitset": "cpp",
+        "regex": "cpp",
+        "variant": "cpp"
     },
     "cpplint.verbose": 0,
     "C_Cpp.dimInactiveRegions": true

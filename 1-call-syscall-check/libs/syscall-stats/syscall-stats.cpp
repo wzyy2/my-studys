@@ -19,13 +19,13 @@ StatsThreadLocal::~StatsThreadLocal() {
 
 void StatsThreadLocal::SetEnable() {
   enabled_ = true;
-  memset(stats_, 0, SysCallIndex::MAX_NUM);
+  memset(stats_, 0, SysCallIndex::MAX_NUM * 8);
   tid_ = pthread_self();
 }
 
 void StatsThreadLocal::SetDisable() {
   enabled_ = false;
-  memset(stats_, 0, SysCallIndex::MAX_NUM);
+  memset(stats_, 0, SysCallIndex::MAX_NUM * 8);
 }
 
 void StatsThreadLocal::PrintStats() {
