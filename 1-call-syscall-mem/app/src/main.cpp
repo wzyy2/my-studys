@@ -105,19 +105,19 @@ int main() {
         if (result != JSONSuccess) {
           return;
         }
-        result = JSON_Search(const_cast<char *>(s.c_str()), s.length(), "[0]", sizeof("[0]") - 1, &value,
-                             &valueLength);
+        result = JSON_Search(const_cast<char *>(s.c_str()), s.length(), "[0]", sizeof("[0]") - 1,
+                             &value, &valueLength);
         rt_string<64> event(value, valueLength);
         StatsThreadLocal::getInstance().PrintStats();
         StatsThreadLocal::getInstance().SetDisable();
         if (event == "telemetry") {
           // j[1] is the data JSON object
-          result = JSON_Search(const_cast<char *>(s.c_str()), s.length(), "[1].cte", sizeof("[1].cte") - 1,
-                               &value, &valueLength);
+          result = JSON_Search(const_cast<char *>(s.c_str()), s.length(), "[1].cte",
+                               sizeof("[1].cte") - 1, &value, &valueLength);
           char *end_ptr = value + valueLength;
           double cte = strtod(value, &end_ptr);
-          result = JSON_Search(const_cast<char *>(s.c_str()), s.length(), "[1].speed", sizeof("[1].speed") - 1,
-                               &value, &valueLength);
+          result = JSON_Search(const_cast<char *>(s.c_str()), s.length(), "[1].speed",
+                               sizeof("[1].speed") - 1, &value, &valueLength);
           double speed = strtod(value, &end_ptr);
           result = JSON_Search(const_cast<char *>(s.c_str()), s.length(), "[1].steering_angle",
                                sizeof("[1].steering_angle") - 1, &value, &valueLength);
@@ -139,11 +139,11 @@ int main() {
           std::cout << "CTE: " << cte << "\t Steering: " << steer_value
                     << "\t throttle: " << throttle << std::endl;
 
-          //           json msgJson;
-          //           msgJson["steering_angle"] = steer_value;
-          //           msgJson["throttle"] = throttle;
-          //           rt_string<256> msg = "42[\"steer\"," + msgJson.dump() + "]";
-          //           ws.send(msg.c_str(), msg.length(), uWS::OpCode::TEXT);
+          char buffer[100];
+          int j =
+              snprintf(buffer, sizeof(buffer), "42[\"steer\",  {\"steering_angle\": %f , \"throttle\": %f} ]",
+                       steer_value, throttle);
+          ws.send(buffer, j, uWS::OpCode::TEXT);
         }
       } else {
         // Manual driving
